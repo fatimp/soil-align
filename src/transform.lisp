@@ -58,21 +58,6 @@
                 (magicl:tref m idx i)))
     result))
 
-;; And MAGICL:COLUMN
-(serapeum:-> column (magicl:matrix/single-float
-                     alexandria:non-negative-fixnum)
-             (values magicl:vector/single-float &optional))
-(defun column (m idx)
-  (declare (optimize (speed 3)))
-  (let* ((n (first (magicl:shape m)))
-         (result (magicl:make-tensor
-                  'magicl:vector/single-float
-                  (list n))))
-    (loop for i fixnum below n do
-          (setf (magicl:tref result i)
-                (magicl:tref m i idx)))
-    result))
-
 ;; ============
 ;; Ransac stuff
 ;; ============
@@ -113,12 +98,7 @@
              (values single-float &optional))
 (defun fit-error (βs xs ys)
   (let ((diff (magicl:.- ys (magicl:@ xs βs))))
-    (flet ((norm (column)
-             (magicl:norm (column diff column))))
-      (max (norm 0)
-           (norm 1)
-           (norm 2)
-           (norm 3)))))
+    (magicl:norm (magicl:reshape diff (list (magicl:size diff))))))
 
 (defun random-integers (k n)
   "Collect K random integer from 0 (inclusive) to N (exclusive)
