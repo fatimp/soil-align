@@ -92,10 +92,20 @@
                         (- k half-bin-size)
                         bin-size))))
 
+(serapeum:-> default-bin-size ((util:image *))
+             (values alexandria:positive-fixnum &optional))
+(defun default-bin-size (image)
+  (let ((side (min (array-dimension image 0)
+                   (array-dimension image 1)
+                   (array-dimension image 2))))
+    (nth-value
+     0 (floor side 8))))
+
 ;; https://en.wikipedia.org/wiki/Adaptive_histogram_equalization
-(serapeum:-> ahe ((util:image (unsigned-byte 8)) alexandria:positive-fixnum)
+(serapeum:-> ahe ((util:image (unsigned-byte 8)) &optional alexandria:positive-fixnum)
              (values (util:image single-float) &optional))
-(defun ahe (image bin-size)
+(defun ahe (image &optional (bin-size (default-bin-size image)))
+  "Perform adaptive histogram equalization (constrast enhancement) of an image."
   (declare (optimize (speed 3)))
   (let ((cdf (histograms->cdfs (histograms image bin-size)))
         (result (make-array (array-dimensions image) :element-type 'single-float)))
