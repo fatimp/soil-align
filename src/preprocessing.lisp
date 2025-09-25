@@ -70,10 +70,6 @@
         (k (clamp k 0 (1- (array-dimension histogram 2)))))
     (array-row-major-index histogram i j k 0)))
 
-(declaim (inline interp1d))
-(defun interp1d (v0 v1 x)
-  (+ v0 (* (- v1 v0) x)))
-
 (serapeum:-> ahe-transform-pixel
              ((util:histograms single-float)
               (unsigned-byte 8)
