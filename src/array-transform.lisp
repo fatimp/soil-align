@@ -1,0 +1,33 @@
+(defpackage soil-align/array-transform
+  (:use #:cl)
+  (:local-nicknames (#:util #:soil-align/util)
+                    (#:tran #:soil-align/transform))
+  (:export #:apply-transform))
+(in-package :soil-align/array-transform)
+
+(serapeum:-> apply-transform-xs
+             (tran:affine-transform single-float single-float single-float)
+             (values single-float single-float single-float &optional))
+(defun apply-transform-xs (m x y z)
+  (declare (optimize (speed 3)))
+  (let ((x (+ (* (aref m 0 0) x) (* (aref m 0 1) y) (* (aref m 0 2) z) (aref m 0 3)))
+        (y (+ (* (aref m 1 0) x) (* (aref m 1 1) y) (* (aref m 1 2) z) (aref m 1 3)))
+        (z (+ (* (aref m 2 0) x) (* (aref m 2 1) y) (* (aref m 2 2) z) (aref m 2 3))))
+    (values x y z)))
+
+(serapeum:-> apply-transform
+             ((util:image single-float) tran:affine-transform)
+             (values (util:image single-float) &optional))
+(defun apply-transform (array m)
+  (declare (optimize (speed 3)))
+  (let ((result (make-array (array-dimensions array) :element-type 'single-float)))
+    (util:loop-array (result (i j k))
+      (multiple-value-bind (x y z)
+          (apply-transform-xs m (float i) (float j) (float k))
+        (setf (aref result i j k)
+              (util:interpolate
+               (lambda (i j k)
+                 (if (array-in-bounds-p array i j k)
+                     (aref array i j k) 0.0))
+               x y z 1))))
+    result))
