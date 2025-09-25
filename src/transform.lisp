@@ -111,17 +111,23 @@ without repetitions."
                        (%go (cons x acc) (1- k)))))))
     (%go nil k)))
 
-;; One iteration of RANSAC fit
-;; https://en.wikipedia.org/wiki/Random_sample_consensus
-;; K — number of points for initial fit
-;; D — number of points needed to be fit with the model to treat the model as good.
 (serapeum:-> ransac-iteration (magicl:matrix/single-float
                                magicl:matrix/single-float
                                alexandria:positive-fixnum
                                alexandria:positive-fixnum
+                               (single-float 0f0)
                                (single-float 0f0))
-         (values boolean &optional magicl:matrix/single-float single-float))
-(defun ransac-iteration (xs ys k d err)
+         (values boolean &optional
+                 magicl:matrix/single-float
+                 (single-float 0f0)
+                 alexandria:positive-fixnum))
+(defun ransac-iteration (xs ys k inliers ε prev-error)
+  "Perform one iteration of RANSAC fit, namely find a linear model ΒS
+so that ΒS(XS) fits YS. K is the number of points to find an initial
+fit. INLIERS is the number of inliers which is necassary to treat the
+model as good. ε is a criterion for being an inlier, namely |Y -
+ΒS(X)| must be less that ε. PREV-ERROR is the fit error from the
+previous step."
   (let* ((length (first (magicl:shape xs)))
          (is (random-integers k length))
          (%xs (select-rows xs is))
@@ -133,7 +139,7 @@ without repetitions."
               for yrow = (row ys i)
               for yfit = (magicl:mult xrow βs)
               for pair-err = (magicl:norm (magicl:.- yrow yfit))
-              when (< pair-err err)
+              when (< pair-err ε)
               collect xrow into fit-x-rows and
               collect yrow into fit-y-rows and
               sum 1 into n
@@ -141,27 +147,30 @@ without repetitions."
                         (return
                           (values
                            n (vstack fit-x-rows) (vstack fit-y-rows)))))
-      (when (and n (>= n d))
-        (let ((βs (least-squares-fit xs ys)))
-          (values t βs (fit-error βs xs ys)))))))
+      (when n
+        (let* ((βs (least-squares-fit xs ys))
+               (fit-error (fit-error βs xs ys)))
+          (when (or (> n inliers) (and (= n inliers) (< fit-error prev-error)))
+            (values t βs fit-error n)))))))
 
 (serapeum:-> ransac-fit (magicl:matrix/single-float
                          magicl:matrix/single-float
                          alexandria:positive-fixnum
                          alexandria:positive-fixnum
-                         alexandria:positive-fixnum
                          (single-float 0f0))
-             (values (or magicl:matrix/single-float null) single-float &optional))
-(defun ransac-fit (xs ys n k d err)
-  (labels ((%go (best-fit best-err n)
+             (values (or magicl:matrix/single-float null)
+                     single-float alexandria:positive-fixnum &optional))
+(defun ransac-fit (xs ys max-iter k err)
+  (labels ((%go (best-fit best-err best-inliers n)
              (if (zerop n)
-                 (values best-fit best-err)
-                 (multiple-value-bind (successp fit err)
-                     (ransac-iteration xs ys k d err)
-                   (if (and successp (< err best-err))
-                       (%go fit err (1- n))
-                       (%go best-fit best-err (1- n)))))))
-    (%go nil ff:single-float-positive-infinity n)))
+                 (values best-fit best-err best-inliers)
+                 (multiple-value-bind (successp fit err inliers)
+                     (ransac-iteration xs ys k best-inliers err best-err)
+                   (let ((n (1- n)))
+                     (if successp
+                         (%go fit err inliers n)
+                         (%go best-fit best-err best-inliers n)))))))
+    (%go nil ff:single-float-positive-infinity k max-iter)))
 
 (serapeum:-> matrix->array (magicl:matrix/single-float)
              (values affine-transform &optional))
@@ -173,23 +182,21 @@ without repetitions."
                       (magicl:tref m i j))))
     res))
 
-;; TODO: These defaults suck
 (serapeum:-> affine-transform (list &key
                                     (:max-iter    alexandria:positive-fixnum)
                                     (:seed-points alexandria:positive-fixnum)
-                                    (:well-fit    alexandria:positive-fixnum)
                                     (:err         (single-float 0f0)))
-         (values (or null affine-transform) single-float &optional))
-(defun affine-transform (matches &key (max-iter 100) (seed-points 15) (well-fit 50) (err 1f0))
+         (values (or null affine-transform)
+                 single-float alexandria:positive-fixnum &optional))
+(defun affine-transform (matches &key (max-iter 500) (seed-points 15) (err 100f0))
   "Find an affine transform matrix which transform the first keypoint
 in each pair of matches to the second keypoint. Keypoint parameters
 are related to the RANSAC algorithm: @c(MAX-ITER) is the maximal
 number of iterations, @c(SEED-POINTS) is an initial number of points
-to make a fit, @c(WELL-FIT) is a number of well fit points needed to
-treat a fit as successful. A point is well-fit if \\(\\| y - Ax \\|\\)
+to make a fit. A point is well-fit if \\(\\| y - Ax \\|\\)
 is less than @c(ERR), (\\(A\\) is a candidate for the found fit)."
-  (multiple-value-bind (fit error)
+  (multiple-value-bind (fit error inliers)
       (multiple-value-bind (xs ys)
           (matches->matrices matches)
-        (ransac-fit xs ys max-iter seed-points well-fit err))
-    (values (if fit (matrix->array (magicl:transpose fit))) error)))
+        (ransac-fit xs ys max-iter seed-points err))
+    (values (if fit (matrix->array (magicl:transpose fit))) error inliers)))
