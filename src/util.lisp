@@ -8,11 +8,20 @@
            #:descriptor
            #:coordinate
            #:+descriptor-offset+
+           #:+descriptor-length+
+           #:ffi-error
            #:transpose
            #:interpolate))
 (in-package :soil-align/util)
 
+(define-condition ffi-error (error)
+  ((message :reader  ffi-error-message
+            :initarg :message))
+  (:report (lambda (c s)
+             (format s "FFI error: ~a" (ffi-error-message c)))))
+
 (defconstant +descriptor-offset+ 3)
+(defconstant +descriptor-length+ (- 771 +descriptor-offset+))
 (deftype image       (type) `(simple-array ,type 3))
 (deftype histograms  (type) `(simple-array ,type (* * * 256)))
 (deftype descriptor  ()     '(simple-array single-float (771)))

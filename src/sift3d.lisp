@@ -9,12 +9,6 @@
   (:export #:descriptors))
 (in-package :soil-align/sift3d)
 
-(define-condition ffi-error (error)
-  ((message :reader  ffi-error-message
-            :initarg :message))
-  (:report (lambda (c s)
-             (format s "FFI error: ~a" (ffi-error-message c)))))
-
 ;; Libraries
 (cffi:define-foreign-library libimutil
   (:unix (:or "libimutil.so"))
@@ -58,7 +52,7 @@
             (array-dimension array 1)
             (array-dimension array 2)
             1))
-    (error 'ffi-error :message "Cannot allocate an image"))
+    (error 'util:ffi-error :message "Cannot allocate an image"))
   (let ((data-ptr (cffi:foreign-slot-value image '(:struct image) 'data)))
     (loop for i below (array-total-size array) do
           (setf (cffi:mem-aref data-ptr :float i)
@@ -88,7 +82,7 @@
 
 (defun init-sift3d (sift3d)
   (unless (zerop (%init-sift3d sift3d))
-    (error 'ffi-error :message "Cannot allocate SIFT3D object")))
+    (error 'util:ffi-error :message "Cannot allocate SIFT3D object")))
 
 (defmacro with-sift3d ((sift3d) &body body)
   `(cffi:with-foreign-object (,sift3d '(:struct sift3d))
@@ -112,7 +106,7 @@
 
 (defun init-keypoint-store (store)
   (unless (zerop (%init-keypoint-store store))
-    (error 'ffi-error :message "Cannot allocate keypoint store")))
+    (error 'util:ffi-error :message "Cannot allocate keypoint store")))
 
 (defmacro with-keypoint-store ((store) &body body)
   `(cffi:with-foreign-object (,store '(:struct keypoint-store))
@@ -136,7 +130,7 @@
 
 (defun init-descriptor-store (store)
   (unless (zerop (%init-descriptor-store store))
-    (error 'ffi-error :message "Cannot allocate descriptor store")))
+    (error 'util:ffi-error :message "Cannot allocate descriptor store")))
 
 (defmacro with-descriptor-store ((store) &body body)
   `(cffi:with-foreign-object (,store '(:struct descriptor-store))
@@ -176,7 +170,7 @@
 (defun init-matrix (matrix nrows ncols type set-zero-p)
   (unless (zerop (%init-matrix matrix nrows ncols type
                                (if set-zero-p 1 0)))
-    (error 'ffi-error :message "Cannot initialize a matrix")))
+    (error 'util:ffi-error :message "Cannot initialize a matrix")))
 
 (defmacro with-matrix ((matrix) &body body)
   `(cffi:with-foreign-object (,matrix '(:struct matrix))
@@ -196,7 +190,7 @@
 
 (defun set-peak-threshold (sift3d threshold)
   (unless (zerop (%set-peak-threshold sift3d threshold))
-    (error 'ffi-error :message "Cannot set peak threshold")))
+    (error 'util:ffi-error :message "Cannot set peak threshold")))
 
 (cffi:defcfun ("SIFT3D_detect_keypoints" %detect-keypoints) :int
   (sift3d (:pointer (:struct sift3d)))
@@ -205,7 +199,7 @@
 
 (defun detect-keypoints (sift3d image store)
   (unless (zerop (%detect-keypoints sift3d image store))
-    (error 'ffi-error :message "Cannot detect keypoints"))
+    (error 'util:ffi-error :message "Cannot detect keypoints"))
   store)
 
 (cffi:defcfun ("SIFT3D_extract_descriptors" %extract-descriptors) :int
@@ -215,7 +209,7 @@
 
 (defun extract-descriptors (sift3d keypoint-store descriptor-store)
   (unless (zerop (%extract-descriptors sift3d keypoint-store descriptor-store))
-    (error 'ffi-error :message "Cannot extract descriptors"))
+    (error 'util:ffi-error :message "Cannot extract descriptors"))
   descriptor-store)
 
 (cffi:defcfun ("SIFT3D_Descriptor_store_to_Mat_rm" %descriptors->matrix) :int
@@ -224,7 +218,7 @@
 
 (defun descriptors->matrix (store matrix)
   (unless (zerop (%descriptors->matrix store matrix))
-    (error 'ffi-error :message "Cannot copy descriptors to a matrix")))
+    (error 'util:ffi-error :message "Cannot copy descriptors to a matrix")))
 
 ;; =========================
 ;; The ultimate WITH- macro
@@ -261,7 +255,7 @@
           (desc-length (cffi:foreign-slot-value matrix '(:struct matrix) 'ncols))
           (matrix-data (cffi:foreign-slot-value matrix '(:struct matrix) 'data)))
       (unless (= desc-length 771)
-        (error 'ffi-error :message "Got strange descriptors"))
+        (error 'util:ffi-error :message "Got strange descriptors"))
       (loop for i below n
             for idx = (* i desc-length)
             collect

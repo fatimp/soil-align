@@ -1,9 +1,9 @@
-(defpackage soil-align/matches
+(defpackage soil-align/matches-bruteforce
   (:use #:cl)
   (:local-nicknames (#:util #:soil-align/util)
                     (#:ff   #:float-features))
-  (:export #:match-descriptors/bruteforce))
-(in-package :soil-align/matches)
+  (:export #:match-descriptors))
+(in-package :soil-align/matches-bruteforce)
 
 (serapeum:-> descriptor-dist (util:descriptor util:descriptor)
              (values (single-float 0.0) &optional))
@@ -38,10 +38,10 @@
                      d2 dist)))))
     (values c1 c2 d1 d2)))
 
-(serapeum:-> match-descriptors/bruteforce
+(serapeum:-> match-descriptors
              (list list &optional (single-float 1.0))
              (values list &optional))
-(defun match-descriptors/bruteforce (set1 set2 &optional (c 1.3))
+(defun match-descriptors (set1 set2 &optional (c 1.3))
   (declare (optimize (speed 3)))
   (let (matches)
     (loop for desc1 in set1 do
