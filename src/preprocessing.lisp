@@ -3,7 +3,7 @@
   (:local-nicknames (#:util #:soil-align/util))
   (:export #:image
            #:histogram
-           #:ahe
+           #:clahe
            #:normalize-image))
 (in-package :soil-align/preprocessing)
 
@@ -70,7 +70,51 @@
         (k (clamp k 0 (1- (array-dimension histogram 2)))))
     (array-row-major-index histogram i j k 0)))
 
-(serapeum:-> ahe-transform-pixel
+(serapeum:-> clip-histogram!
+             ((util:histograms (unsigned-byte 64))
+              alexandria:positive-fixnum
+              alexandria:non-negative-fixnum
+              (single-float 0.0 1.0))
+             (values &optional))
+(defun clip-histogram! (histograms bin-size index clip-limit)
+  (declare (optimize (speed 3)))
+  (let* ((clip-value (floor (* clip-limit (expt bin-size 3))))
+         (clipped-sum
+          (loop for i below 256
+                for idx = (+ index i)
+                for x   = (row-major-aref histograms idx)
+                ;; TODO: Add a constraint to x in sbcl-float-features
+                for x-clipped = (min x clip-value)
+                for residue   = (- x x-clipped)
+                do (setf (row-major-aref histograms idx) x-clipped)
+                sum residue of-type (unsigned-byte 64))))
+    (declare (type fixnum clip-value))
+    (loop with increment = (floor clipped-sum 256)
+          for i below 256
+          for idx = (+ index i) do
+          (incf (row-major-aref histograms idx) increment))
+    ;; 5 in each bin
+    (if (< clipped-sum (* 256 5))
+        (values)
+        (clip-histogram! histograms bin-size index clip-limit))))
+
+(serapeum:-> clip-histograms!
+             ((util:histograms (unsigned-byte 64))
+              alexandria:positive-fixnum
+              (single-float 0.0 1.0))
+             (values (util:histograms (unsigned-byte 64)) &optional))
+(defun clip-histograms! (histograms bin-size clip-limit)
+  (declare (optimize (speed 3)))
+  (util:loop-ranges ((i 0 (array-dimension histograms 0))
+                     (j 0 (array-dimension histograms 1))
+                     (k 0 (array-dimension histograms 2)))
+    (clip-histogram!
+     histograms bin-size
+     (array-row-major-index histograms i j k 0)
+     clip-limit))
+  histograms)
+
+(serapeum:-> clahe-transform-pixel
              ((util:histograms single-float)
               (unsigned-byte 8)
               alexandria:positive-fixnum
@@ -78,7 +122,7 @@
               alexandria:non-negative-fixnum
               alexandria:non-negative-fixnum)
              (values single-float &optional))
-(defun ahe-transform-pixel (table v bin-size i j k)
+(defun clahe-transform-pixel (table v bin-size i j k)
   (declare (optimize (speed 3)))
   (flet ((access-pixel (i j k)
            (let ((index (histogram-row-major-index table i j k)))
@@ -102,16 +146,20 @@
      0 (floor side 8))))
 
 ;; https://en.wikipedia.org/wiki/Adaptive_histogram_equalization
-(serapeum:-> ahe ((util:image (unsigned-byte 8)) &optional alexandria:positive-fixnum)
+(serapeum:-> clahe ((util:image (unsigned-byte 8)) &key
+                    (:bin-size   alexandria:positive-fixnum)
+                    (:clip-limit (single-float 0.0 1.0)))
              (values (util:image single-float) &optional))
-(defun ahe (image &optional (bin-size (default-bin-size image)))
+(defun clahe (image &key (bin-size (default-bin-size image)) (clip-limit 0.015))
   "Perform adaptive histogram equalization (constrast enhancement) of an image."
   (declare (optimize (speed 3)))
-  (let ((cdf (histograms->cdfs (histograms image bin-size)))
+  (let ((cdf (histograms->cdfs
+              (clip-histograms!
+               (histograms image bin-size) bin-size clip-limit)))
         (result (make-array (array-dimensions image) :element-type 'single-float)))
     (util:loop-array (result (i j k))
       (setf (aref result i j k)
-            (ahe-transform-pixel cdf (aref image i j k) bin-size i j k)))
+            (clahe-transform-pixel cdf (aref image i j k) bin-size i j k)))
     result))
 
 (serapeum:-> normalize-image ((util:image (unsigned-byte 8)))

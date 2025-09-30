@@ -114,11 +114,11 @@
       (with-pynndescent (not bruteforcep)
         (let* ((desc-source
                 (log-eval (sift3d:descriptors
-                           (pre:ahe source) min-dog)
+                           (pre:clahe source) min-dog)
                           "Got descriptors of the source image"))
                (desc-reference
                 (log-eval (sift3d:descriptors
-                           (pre:ahe reference) min-dog)
+                           (pre:clahe reference) min-dog)
                           "Got descriptors of the reference image"))
                (matches
                 (log-eval
