@@ -150,27 +150,28 @@ previous step."
       (when n
         (let* ((βs (least-squares-fit xs ys))
                (fit-error (fit-error βs xs ys)))
-          (when (or (> n inliers) (and (= n inliers) (< fit-error prev-error)))
+          (when (and (>= n inliers) (< fit-error prev-error))
             (values t βs fit-error n)))))))
 
 (serapeum:-> ransac-fit (magicl:matrix/single-float
                          magicl:matrix/single-float
                          alexandria:positive-fixnum
                          alexandria:positive-fixnum
+                         alexandria:positive-fixnum
                          (single-float 0f0))
              (values (or magicl:matrix/single-float null)
                      single-float alexandria:positive-fixnum &optional))
-(defun ransac-fit (xs ys max-iter k err)
-  (labels ((%go (best-fit best-err best-inliers n)
+(defun ransac-fit (xs ys max-iter k min-inliers err)
+  (labels ((%go (best-fit best-err inliers n)
              (if (zerop n)
-                 (values best-fit best-err best-inliers)
-                 (multiple-value-bind (successp fit err inliers)
-                     (ransac-iteration xs ys k best-inliers err best-err)
+                 (values best-fit best-err inliers)
+                 (multiple-value-bind (successp fit %err %inliers)
+                     (ransac-iteration xs ys k min-inliers err best-err)
                    (let ((n (1- n)))
                      (if successp
-                         (%go fit err inliers n)
-                         (%go best-fit best-err best-inliers n)))))))
-    (%go nil ff:single-float-positive-infinity k max-iter)))
+                         (%go fit %err %inliers n)
+                         (%go best-fit best-err inliers n)))))))
+    (%go nil ff:single-float-positive-infinity min-inliers max-iter)))
 
 (serapeum:-> matrix->array (magicl:matrix/single-float)
              (values affine-transform &optional))
@@ -185,18 +186,22 @@ previous step."
 (serapeum:-> affine-transform (list &key
                                     (:max-iter    alexandria:positive-fixnum)
                                     (:seed-points alexandria:positive-fixnum)
+                                    (:min-inliers (single-float 0f0 1f0))
                                     (:err         (single-float 0f0)))
          (values (or null affine-transform)
                  single-float alexandria:positive-fixnum &optional))
-(defun affine-transform (matches &key (max-iter 500) (seed-points 15) (err 100f0))
+(defun affine-transform (matches
+                         &key (min-inliers 8f-1) (max-iter 500) (seed-points 15) (err 100f0))
   "Find an affine transform matrix which transform the first keypoint
 in each pair of matches to the second keypoint. Keypoint parameters
 are related to the RANSAC algorithm: @c(MAX-ITER) is the maximal
 number of iterations, @c(SEED-POINTS) is an initial number of points
-to make a fit. A point is well-fit if \\(\\| y - Ax \\|\\)
-is less than @c(ERR), (\\(A\\) is a candidate for the found fit)."
+to make a fit. A parameter @c(MIN-INLIERS) controls a minimal ratio of
+inliers to treat a fit as successful. A point is well-fit if
+ \\(\\| y - Ax \\|\\) is less than @c(ERR), (\\(A\\) is a candidate
+for the found fit)."
   (multiple-value-bind (fit error inliers)
       (multiple-value-bind (xs ys)
           (matches->matrices matches)
-        (ransac-fit xs ys max-iter seed-points err))
+        (ransac-fit xs ys max-iter seed-points (floor (* (length matches) min-inliers)) err))
     (values (if fit (matrix->array (magicl:transpose fit))) error inliers)))
