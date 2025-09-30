@@ -110,6 +110,7 @@
                    (equalp (array-element-type reference) '(unsigned-byte 8)))
         (format *error-output* "Both input arrays must have dtype='uint8'")
         (print-usage-and-quit))
+      (log:info "Starting")
       (with-pynndescent (not bruteforcep)
         (let* ((desc-source
                 (log-eval (sift3d:descriptors
