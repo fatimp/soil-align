@@ -85,11 +85,14 @@
              (magicl:matrix/single-float magicl:matrix/single-float)
              (values magicl:matrix/single-float &optional))
 (defun least-squares-fit (xs ys)
-  (magicl:mult
-   (magicl:mult
-    (magicl:inv (magicl:mult xs xs :transa :t))
-    xs :transb :t)
-   ys))
+  (or
+   (ignore-errors
+     (magicl:mult
+      (magicl:mult
+       (magicl:inv (magicl:mult xs xs :transa :t))
+       xs :transb :t)
+      ys))
+   (magicl:eye '(4 4) :type 'single-float)))
 
 
 (serapeum:-> fit-error (magicl:matrix/single-float
