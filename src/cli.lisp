@@ -128,6 +128,9 @@
                                       :max-iter    2000
                                       :err         fit-error)
             (log:info "Found a transform matrix")
+            (unless matrix
+              (log:error "Consensus is not achieved")
+              (uiop:quit 0))
             (when trans-matrix
               (numpy-npy:store-array matrix trans-matrix))
             (when trans-image
