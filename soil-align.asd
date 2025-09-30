@@ -26,6 +26,7 @@
     (let* ((c-file (component-pathname component))
            (shared-object (first (output-files operation component))))
       (ensure-directories-exist shared-object)
+      ;; TODO: Discover all needed flags
       (uiop:run-program
        (list "cc" "-O2" "-fPIC" "-shared"
              "-I/usr/local/include/python3.11"
@@ -52,6 +53,10 @@
                :float-features
                :cffi
                :magicl
+               :log4cl
+               :parse-float
+               :command-line-parse
+               :numpy-npy
                :soil-align/pynndescent-so
                :soil-align/util
                :soil-align/preprocessing
@@ -59,4 +64,14 @@
                :soil-align/matches-bruteforce
                :soil-align/matches-pynndescent
                :soil-align/transform
-               :soil-align/array-transform))
+               :soil-align/array-transform
+               :soil-align/cli)
+  :build-operation program-op
+  :build-pathname "soil-align"
+  :entry-point "soil-align/cli:main")
+
+#+sb-core-compression
+(defmethod asdf:perform ((o asdf:image-op) (c asdf:system))
+  (uiop:dump-image (asdf:output-file o c)
+                   :executable t
+                   :compression -1))
