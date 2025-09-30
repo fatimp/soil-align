@@ -89,6 +89,7 @@
      (log:info ,@args)))
 
 (defun main ()
+  (sb-ext:disable-debugger)
   (let* ((args (get-arguments-or-fail))
          (min-dog (float (%assoc :min-dog           args 0.1) 0d0))
          (bruteforcep    (%assoc :bruteforce        args))
