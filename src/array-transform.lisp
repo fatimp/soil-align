@@ -29,5 +29,6 @@
                (lambda (i j k)
                  (if (array-in-bounds-p array i j k)
                      (aref array i j k) 0.0))
-               x y z 1))))
+               x y z
+               1 1 1))))
     result))

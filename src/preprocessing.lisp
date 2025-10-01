@@ -3,32 +3,62 @@
   (:local-nicknames (#:util #:soil-align/util))
   (:export #:image
            #:histogram
+           #:bin-dimensions
            #:clahe
            #:normalize-image))
 (in-package :soil-align/preprocessing)
 
+(serapeum:defconstructor bin-dimensions
+ (h alexandria:positive-fixnum)
+ (w alexandria:positive-fixnum)
+ (d alexandria:positive-fixnum))
+
+(declaim (inline bin-size))
+(defun bin-size (dim)
+  (* (bin-dimensions-h dim)
+     (bin-dimensions-w dim)
+     (bin-dimensions-d dim)))
+
+(declaim (inline clamp))
+(defun clamp (x min max)
+  (min (max x min) max))
+
+(serapeum:-> histogram-row-major-index
+             ((util:histograms *) fixnum fixnum fixnum)
+             (values alexandria:non-negative-fixnum &optional))
+(declaim (inline histogram-row-major-index))
+(defun histogram-row-major-index (histogram i j k)
+  (let ((i (clamp i 0 (1- (array-dimension histogram 0))))
+        (j (clamp j 0 (1- (array-dimension histogram 1))))
+        (k (clamp k 0 (1- (array-dimension histogram 2)))))
+    (array-row-major-index histogram i j k 0)))
+
 (serapeum:-> histograms
-             ((util:image (unsigned-byte 8)) alexandria:positive-fixnum)
+             ((util:image (unsigned-byte 8)) bin-dimensions)
              (values (util:histograms (unsigned-byte 64)) &optional))
-(defun histograms (image bin-size)
+(defun histograms (image bin-dimensions)
   (declare (optimize (speed 3)))
-  (let ((h (array-dimension image 0))
-        (w (array-dimension image 1))
-        (d (array-dimension image 2)))
-    (util:rmvb (((nh rh) (floor h bin-size))
-                ((nw rw) (floor w bin-size))
-                ((nd rd) (floor d bin-size)))
-      ;; SBCL gives shit here
-      (unless (every #'zerop (list rh rw rd))
-        (error "BIN-SIZE does not divide dimensions"))
+  (let ((h  (array-dimension image 0))
+        (w  (array-dimension image 1))
+        (d  (array-dimension image 2))
+        (bh (bin-dimensions-h bin-dimensions))
+        (bw (bin-dimensions-w bin-dimensions))
+        (bd (bin-dimensions-d bin-dimensions)))
+    (let ((nh (floor h bh))
+          (nw (floor w bw))
+          (nd (floor d bd)))
       (let ((histograms (make-array (list nh nw nd 256)
                                     :element-type '(unsigned-byte 64)
                                     :initial-element 0)))
         (util:loop-array (image (i j k))
-          (let ((bh (floor i bin-size))
-                (bw (floor j bin-size))
-                (bd (floor k bin-size)))
-            (incf (aref histograms bh bw bd (aref image i j k)))))
+          ;; The last histogram bin (along any axis) can be a bit
+          ;; larger than other bins
+          (let ((base-idx (histogram-row-major-index
+                           histograms
+                           (floor i bh)
+                           (floor j bw)
+                           (floor k bd))))
+            (incf (row-major-aref histograms (+ base-idx (aref image i j k))))))
         histograms))))
 
 (serapeum:-> histograms->cdfs ((util:histograms (unsigned-byte 64)))
@@ -56,20 +86,6 @@
                     (/ (row-major-aref cdfs %idx) max)))))
     normalized-cdfs))
 
-(declaim (inline clamp))
-(defun clamp (x min max)
-  (min (max x min) max))
-
-(serapeum:-> histogram-row-major-index
-             ((util:histograms *) fixnum fixnum fixnum)
-             (values alexandria:non-negative-fixnum &optional))
-(declaim (inline histogram-row-major-index))
-(defun histogram-row-major-index (histogram i j k)
-  (let ((i (clamp i 0 (1- (array-dimension histogram 0))))
-        (j (clamp j 0 (1- (array-dimension histogram 1))))
-        (k (clamp k 0 (1- (array-dimension histogram 2)))))
-    (array-row-major-index histogram i j k 0)))
-
 (serapeum:-> clip-histogram!
              ((util:histograms (unsigned-byte 64))
               alexandria:positive-fixnum
@@ -78,7 +94,7 @@
              (values &optional))
 (defun clip-histogram! (histograms bin-size index clip-limit)
   (declare (optimize (speed 3)))
-  (let* ((clip-value (floor (* clip-limit (expt bin-size 3))))
+  (let* ((clip-value (floor (* clip-limit bin-size)))
          (clipped-sum
           (loop for i below 256
                 for idx = (+ index i)
@@ -117,49 +133,51 @@
 (serapeum:-> clahe-transform-pixel
              ((util:histograms single-float)
               (unsigned-byte 8)
-              alexandria:positive-fixnum
+              bin-dimensions
               alexandria:non-negative-fixnum
               alexandria:non-negative-fixnum
               alexandria:non-negative-fixnum)
              (values single-float &optional))
-(defun clahe-transform-pixel (table v bin-size i j k)
+(defun clahe-transform-pixel (table v bin-dimensions i j k)
   (declare (optimize (speed 3)))
   (flet ((access-pixel (i j k)
            (let ((index (histogram-row-major-index table i j k)))
              (row-major-aref table (+ index v)))))
     (declare (inline access-pixel))
-    (let* ((bin-size (float bin-size))
-           (half-bin-size (/ bin-size 2)))
+    (let ((bin-dim-h (float (bin-dimensions-h bin-dimensions)))
+          (bin-dim-w (float (bin-dimensions-w bin-dimensions)))
+          (bin-dim-d (float (bin-dimensions-d bin-dimensions))))
       (util:interpolate #'access-pixel
-                        (- i half-bin-size)
-                        (- j half-bin-size)
-                        (- k half-bin-size)
-                        bin-size))))
+                        (- i (/ bin-dim-h 2))
+                        (- j (/ bin-dim-w 2))
+                        (- k (/ bin-dim-d 2))
+                        bin-dim-h bin-dim-w bin-dim-d))))
 
-(serapeum:-> default-bin-size ((util:image *))
-             (values alexandria:positive-fixnum &optional))
-(defun default-bin-size (image)
-  (let ((side (min (array-dimension image 0)
-                   (array-dimension image 1)
-                   (array-dimension image 2))))
-    (nth-value
-     0 (floor side 8))))
+(serapeum:-> default-bin-dimensions ((util:image *))
+             (values bin-dimensions &optional))
+(defun default-bin-dimensions (image)
+  (bin-dimensions
+   (floor (array-dimension image 0) 8)
+   (floor (array-dimension image 1) 8)
+   (floor (array-dimension image 2) 8)))
 
 ;; https://en.wikipedia.org/wiki/Adaptive_histogram_equalization
 (serapeum:-> clahe ((util:image (unsigned-byte 8)) &key
-                    (:bin-size   alexandria:positive-fixnum)
-                    (:clip-limit (single-float 0.0 1.0)))
+                    (:bin-dimensions bin-dimensions)
+                    (:clip-limit     (single-float 0.0 1.0)))
              (values (util:image single-float) &optional))
-(defun clahe (image &key (bin-size (default-bin-size image)) (clip-limit 0.015))
+(defun clahe (image &key (bin-dimensions (default-bin-dimensions image)) (clip-limit 0.015))
   "Perform adaptive histogram equalization (constrast enhancement) of an image."
   (declare (optimize (speed 3)))
   (let ((cdf (histograms->cdfs
               (clip-histograms!
-               (histograms image bin-size) bin-size clip-limit)))
+               (histograms image bin-dimensions)
+               (bin-size bin-dimensions)
+               clip-limit)))
         (result (make-array (array-dimensions image) :element-type 'single-float)))
     (util:loop-array (result (i j k))
       (setf (aref result i j k)
-            (clahe-transform-pixel cdf (aref image i j k) bin-size i j k)))
+            (clahe-transform-pixel cdf (aref image i j k) bin-dimensions i j k)))
     result))
 
 (serapeum:-> normalize-image ((util:image (unsigned-byte 8)))
