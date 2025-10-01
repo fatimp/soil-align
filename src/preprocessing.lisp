@@ -167,7 +167,9 @@
                     (:clip-limit     (single-float 0.0 1.0)))
              (values (util:image single-float) &optional))
 (defun clahe (image &key (bin-dimensions (default-bin-dimensions image)) (clip-limit 0.015))
-  "Perform adaptive histogram equalization (constrast enhancement) of an image."
+  "Perform adaptive histogram equalization (constrast enhancement) of
+an image. The parameter @c(BIN-DIMENSIONS) controls dimensions of a
+single histogram."
   (declare (optimize (speed 3)))
   (let ((cdf (histograms->cdfs
               (clip-histograms!
@@ -183,6 +185,7 @@
 (serapeum:-> normalize-image ((util:image (unsigned-byte 8)))
              (values (util:image single-float) &optional))
 (defun normalize-image (image)
+  "Convert an image to an array of floats in the range \\([0, 1]\\)."
   (declare (optimize (speed 3)))
   (let ((result (make-array (array-dimensions image) :element-type 'single-float)))
     (loop for i below (array-total-size result) do

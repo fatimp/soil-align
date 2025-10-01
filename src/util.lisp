@@ -93,6 +93,7 @@
              (values single-float &optional))
 (declaim (inline interpolate))
 (defun interpolate (f x y z divisor-x divisor-y divisor-z)
+  "Interpolate F in the point (X/DIVISOR-X, Y/DIVISOR-Y, Z/DIVIZOR-Z)."
   (let ((divisor-x (float divisor-x))
         (divisor-y (float divisor-y))
         (divisor-z (float divisor-z)))

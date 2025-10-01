@@ -242,7 +242,16 @@
 (serapeum:-> descriptors ((util:image single-float) &optional (double-float 0d0 1d0))
              (values list &optional))
 (defun descriptors (array &optional (peak-threshold 1d-1))
+  "Take an image (3D array of single-floats) and return a list of
+descriptors. The parameter @c(PEAK-THRESHOLD) controls a number of
+descriptors, with smaller value providing more descriptors. Providing
+a value lesser than the default (0.1) results in a great number of
+unstable descriptors."
   (with-sift3d-objects ((sift3d           sift3d)
+                        ;; Here we call TRANSPOSE because Sift3D
+                        ;; library accepts arrays in column-major
+                        ;; order (but outputs normal row-major ordered
+                        ;; arrays).
                         (image            image (util:transpose array))
                         (keypoint-store   keypoint-store)
                         (descriptor-store descriptor-store)
@@ -259,6 +268,10 @@
       (loop for i below n
             for idx = (* i desc-length)
             collect
+            ;; A descriptor is a vector of 771 single float elements.
+            ;; The first 3 elements are the keypoint's coordinate and
+            ;; the rest are arbitrary numbers which form a metric
+            ;; space [0, 1]^{768} with a Euclidean metric.
             (let ((descriptor (make-array desc-length :element-type 'single-float)))
               (loop for j below desc-length do
                     (setf (aref descriptor j)

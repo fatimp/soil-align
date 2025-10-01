@@ -19,6 +19,7 @@
              ((util:image single-float) tran:affine-transform)
              (values (util:image single-float) &optional))
 (defun apply-transform (array m)
+  "Apply affine transform @c(M) (in the form of 4x4 matrix) to an image."
   (declare (optimize (speed 3)))
   (let ((result (make-array (array-dimensions array) :element-type 'single-float)))
     (util:loop-array (result (i j k))

@@ -84,6 +84,11 @@
 (serapeum:-> match-descriptors (list list &optional (single-float 0.0))
              (values list &optional))
 (defun match-descriptors (s1 s2 &optional (c 1.3))
+  "Find matches between two sets of descriptors. The parameter @c(C)
+controls what we treat as a match. Bigger values result in a lesser
+number of more stable matches.
+
+Pynndescent is required for this function."
   (flet ((cut-coordinates (descriptor)
            (declare (type util:descriptor descriptor))
            (subseq descriptor util:+descriptor-offset+))

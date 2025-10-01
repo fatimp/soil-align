@@ -1,3 +1,7 @@
+;; Any kind of trees which are dedicated to improve kNN queries are
+;; useless in this setup. The only option is to use a simple
+;; bruteforce search or ANN algorithms.
+
 (defpackage soil-align/matches-bruteforce
   (:use #:cl)
   (:local-nicknames (#:util #:soil-align/util)
@@ -42,6 +46,9 @@
              (list list &optional (single-float 1.0))
              (values list &optional))
 (defun match-descriptors (set1 set2 &optional (c 1.3))
+  "Find matches between two sets of descriptors. The parameter @c(C)
+controls what we treat as a match. Bigger values result in a lesser
+number of more stable matches."
   (declare (optimize (speed 3)))
   (let (matches)
     (loop for desc1 in set1 do
