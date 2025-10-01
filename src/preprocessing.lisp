@@ -167,9 +167,9 @@
                     (:clip-limit     (single-float 0.0 1.0)))
              (values (util:image single-float) &optional))
 (defun clahe (image &key (bin-dimensions (default-bin-dimensions image)) (clip-limit 0.015))
-  "Perform adaptive histogram equalization (constrast enhancement) of
-an image. The parameter @c(BIN-DIMENSIONS) controls dimensions of a
-single histogram."
+  "Perform contrast limited adaptive histogram equalization (constrast
+enhancement) of an image. The parameter @c(BIN-DIMENSIONS) controls
+dimensions of a single histogram."
   (declare (optimize (speed 3)))
   (let ((cdf (histograms->cdfs
               (clip-histograms!

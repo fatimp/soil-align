@@ -245,8 +245,8 @@
   "Take an image (3D array of single-floats) and return a list of
 descriptors. The parameter @c(PEAK-THRESHOLD) controls a number of
 descriptors, with smaller value providing more descriptors. Providing
-a value lesser than the default (0.1) results in a great number of
-unstable descriptors."
+a value lesser than the default results in a great number of unstable
+descriptors."
   (with-sift3d-objects ((sift3d           sift3d)
                         ;; Here we call TRANSPOSE because Sift3D
                         ;; library accepts arrays in column-major

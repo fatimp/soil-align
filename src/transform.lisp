@@ -195,7 +195,7 @@ previous step."
                  single-float alexandria:positive-fixnum &optional))
 (defun affine-transform (matches
                          &key (min-inliers 8f-1) (max-iter 500) (seed-points 15) (err 100f0))
-  "Find an affine transform matrix which transform the first keypoint
+  "Find an affine transform matrix which transforms the first keypoint
 in each pair of matches to the second keypoint. Keypoint parameters
 are related to the RANSAC algorithm: @c(MAX-ITER) is the maximal
 number of iterations, @c(SEED-POINTS) is an initial number of points

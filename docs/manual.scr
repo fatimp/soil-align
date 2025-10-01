@@ -1,0 +1,104 @@
+@begin[ref=index](section)
+   @title(Чё такое?)
+   @c(soil-align) — это библиотека и программа для выравнивания трёхмерных
+   изображений пористых сред. Её принцип действия основан на расчёте ключевых
+   точек изображения, инвариантных относительно аффинных преобразований,
+   сопоставлении их на двух изображениях, нахождении преобразования,
+   переводящего одно изображение в другое, и применении обратного
+   преобразования.
+
+   Зависимости:
+   @begin(list)
+     @item(@link[uri="https://github.com/bbrister/SIFT3D"](SIFT3D))
+     @item(@link[uri="https://pypi.org/project/pynndescent"](pynndescent))
+     @item(SBCL (другая реализация CL не подойдёт))
+   @end(list)
+
+   Как установить:
+   @begin(enum)
+     @item(Установить @link[uri="https://www.quicklisp.org/beta/"](quicklisp))
+     @item(Склонировать этот репозиторий в @c(local-projects))
+     @item(В REPL выполнить @c((ql:quickload :soil-align)))
+     @item(Для сборки утилиты командной строки выполнить @c((asdf:make :soil-align)))
+   @end(enum)
+
+   Используемые алгоритмы:
+   @begin(list)
+     @item(B. Rister, M. A. Horowitz and D. L. Rubin, "Volumetric Image
+   Registration From Invariant Keypoints," in IEEE Transactions on Image
+   Processing, vol. 26, no. 10, pp. 4900-4910, Oct. 2017. doi:
+   10.1109/TIP.2017.2722689)
+     @item(Dong, Wei, Charikar Moses, and Kai Li. "Efficient k-nearest neighbor
+   graph construction for generic similarity measures." Proceedings of the 20th
+   international conference on World wide web. ACM, 2011.)
+     @item(@link[uri="https://en.wikipedia.org/wiki/Adaptive_histogram_equalization#CLAHE"](CLAHE))
+     @item(@link[uri="https://en.wikipedia.org/wiki/Random_sample_consensus"](RANSAC))
+   @end(list)
+@end(section)
+
+@begin(section)
+   @title(Command line tool)
+   Утилита командной строки имеет следующий интерфейс (выводится при запуске без
+   аргументов):
+   @begin(code)
+Usage: soil-align [-v|--verbose] [--bruteforce] [-m|--matrix m.npy]
+                  [-o|--image out.npy] [--min-dog P] [--dist-ratio C]
+                  [--fit-error E] [--min-inliers N]
+                  reference source
+
+Description of flags and options
+--min-inliers N        A fraction of inliers to accept a fit [0-1]
+--fit-error E          The maximal allowed fit error to treat a sampler as inlier
+--dist-ratio C         Controls what we consider a match
+--min-dog P            The smallest allowed absolute DoG value, as a fraction of the largest
+-o|--image out.npy     Output file name for a transformed image (in numpy format)
+-m|--matrix m.npy      Output file name for a transform matrix (in numpy format)
+--bruteforce           Use bruteforce matching of keypoints instead of pynndescent
+-v|--verbose           Be verbose
+   @end(code)
+
+   Два обязательных аргумента @c(reference) и @c(source) — это два входных
+   изображения в формате numpy массивов (.npy файлы). Soil-align попробует
+   сопоставить изображение @c(source) с @c(reference). Для работы также
+   необходимы опции @c(-m) или @c(-o) (или обе сразу). Первая выводит матрицу
+   преобразования, переводящую @c(reference) в @c(source) (SIC!), а вторая —
+   трансформированное изображение @c(source) таким образом, чтобы его элементы
+   максимально совпадали с @c(reference). Тип элемента (@c(dtype) в numpy)
+   входных массивов должен быть @c(uint8). Остальные опции относятся к
+   настройкам алгоритмов 3D SIFT и RANSAC. Рекомендуется обратиться к литературе
+   для понимания их значения.
+@end(section)
+
+@begin(section)
+  @title(API)
+  Пакет @c(soil-align/preprocessing):
+  @cl:with-package[name="soil-align/preprocessing"](
+    @cl:doc(function normalize-image)
+    @cl:doc(function clahe)
+  )
+
+  Пакет @c(soil-align/sift3d):
+  @cl:with-package[name="soil-align/sift3d"](
+    @cl:doc(function descriptors)
+  )
+
+  Пакет @c(soil-align/matches-bruteforce):
+  @cl:with-package[name="soil-align/matches-bruteforce"](
+    @cl:doc(function match-descriptors)
+  )
+
+  Пакет @c(soil-align/matches-pynndescent):
+  @cl:with-package[name="soil-align/matches-pynndescent"](
+    @cl:doc(function match-descriptors)
+  )
+
+  Пакет @c(soil-align/transform):
+  @cl:with-package[name="soil-align/transform"](
+    @cl:doc(function affine-transform)
+  )
+
+  Пакет @c(soil-align/array-transform):
+  @cl:with-package[name="soil-align/array-transform"](
+    @cl:doc(function apply-transform)
+  )
+@end(section)
