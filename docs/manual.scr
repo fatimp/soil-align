@@ -22,6 +22,9 @@
      @item(Для сборки утилиты командной строки выполнить @c((asdf:make :soil-align)))
    @end(enum)
 
+   Пример работы (показаны 2D срезы):
+   @image[src=example.png]()
+
    Используемые алгоритмы:
    @begin(list)
      @item(B. Rister, M. A. Horowitz and D. L. Rubin, "Volumetric Image
@@ -36,8 +39,8 @@
    @end(list)
 @end(section)
 
-@begin(section)
-   @title(Command line tool)
+@begin[ref=cli](section)
+   @title(Утилита командной строки)
    Утилита командной строки имеет следующий интерфейс (выводится при запуске без
    аргументов):
    @begin(code)
