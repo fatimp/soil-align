@@ -88,6 +88,7 @@ Description of flags and options
   Пакет @c(soil-align/db):
   @cl:with-package[name="soil-align/db"](
     @cl:doc(function descriptors-cached)
+    @cl:doc(variable *db-pathname*)
   )
 
   Пакет @c(soil-align/matches-bruteforce):

@@ -93,10 +93,10 @@
      (log:info ,@args)))
 
 (declaim (inline))
-(defun descriptors (name array peak-threshold no-db-p)
+(defun descriptors (array peak-threshold no-db-p)
   (if no-db-p
       (sift3d:descriptors (pre:clahe array) peak-threshold)
-      (db:descriptors-cached name array #'pre:clahe peak-threshold)))
+      (db:descriptors-cached array #'pre:clahe peak-threshold)))
 
 (defun main ()
   (sb-ext:disable-debugger)
@@ -108,15 +108,15 @@
          (fit-error      (%assoc :fit-error         args 100.0))
          (trans-image    (%assoc :transformed-image args))
          (trans-matrix   (%assoc :transform-matrix  args))
-         (reference-name (%assoc :reference         args))
-         (source-name    (%assoc :source            args))
+         (reference      (%assoc :reference         args))
+         (source         (%assoc :source            args))
          (no-db-p        (%assoc :no-db             args)))
     (unless (or trans-image trans-matrix)
       (format *error-output* "No output selected~%")
       (print-usage-and-quit))
     (log:config (if (%assoc :verbose args) :info 0))
-    (let ((source    (numpy-npy:load-array source-name))
-          (reference (numpy-npy:load-array reference-name)))
+    (let ((source    (numpy-npy:load-array source))
+          (reference (numpy-npy:load-array reference)))
       (unless (and (equalp (array-element-type source)    '(unsigned-byte 8))
                    (equalp (array-element-type reference) '(unsigned-byte 8)))
         (format *error-output* "Both input arrays must have dtype='uint8'")
@@ -124,10 +124,10 @@
       (log:info "Starting")
       (with-pynndescent (not bruteforcep)
         (let* ((desc-source
-                (log-eval (descriptors source-name source min-dog no-db-p)
+                (log-eval (descriptors source min-dog no-db-p)
                           "Got descriptors of the source image"))
                (desc-reference
-                (log-eval (descriptors reference-name reference min-dog no-db-p)
+                (log-eval (descriptors reference min-dog no-db-p)
                           "Got descriptors of the reference image"))
                (matches
                 (log-eval

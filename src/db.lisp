@@ -3,13 +3,17 @@
   (:local-nicknames (#:util   #:soil-align/util)
                     (#:sift3d #:soil-align/sift3d))
   (:export #:prepare-database
+           #:*db-pathname*
            #:descriptors-cached))
 (in-package :soil-align/db)
 
-(alexandria:define-constant +db-name+
-    "descriptors.sqlite"
-  :test          #'string=
-  :documentation "Name of the database (will be created in the current directory).")
+(declaim (type pathname *db-pathname*))
+(defparameter *db-pathname*
+  #+unix
+  #p"~/.local/share/soil-align/descriptors.sqlite"
+  #-unix
+  (error "I don't know a suitable location where I can store the database.")
+  "Path where the cache is stored")
 
 (declaim (inline convert-to-simple-array))
 (defun convert-to-simple-array (sequence)
@@ -59,67 +63,59 @@
 
 (defun %prepare-database (db)
   (sqlite:execute-non-query
-   db (concatenate
-       'string
-       "create table if not exists summary (name string not null unique, "
-       "sha256 blob not null, "
-       "mindog real not null);"))
+   db "create table if not exists summary (sha256 blob primary key, mindog real not null);")
   (sqlite:execute-non-query
-   db (concatenate
-       'string
-       "create table if not exists descriptors (name string not null, "
-       "descr blob not null);")))
+   db #.(concatenate
+         'string
+         "create table if not exists descriptors (sha256 blob not null, "
+         "descr blob not null);")))
 
 (defun prepare-database ()
-  (sqlite:with-open-database (db +db-name+)
+  (sqlite:with-open-database (db (uiop:native-namestring *db-pathname*))
     (%prepare-database db)))
 
 (serapeum:-> descriptors-cached
-             ((or string pathname)
-              (util:image (unsigned-byte 8))
+             ((util:image (unsigned-byte 8))
               (serapeum:-> ((util:image (unsigned-byte 8)))
                            (values (util:image single-float) &optional))
               &optional (double-float 0d0 1d0))
              (values list &optional))
-(defun descriptors-cached (name array preprocess &optional (peak-threshold 1d-1))
+(defun descriptors-cached (array preprocess &optional (peak-threshold 1d-1))
   "Calculate image descriptors using 3D SIFT and cache them in a
 database. The next time the descriptors are calculated for this
-particular combination of @c(NAME) and @c(ARRAY) the results are read
-from the database. The database stores SHA256 hash for images to make
-internal consistency checks. @c(NAME) is ment to be a file name which
-is stored relatively to the current working directory where the
-database is resided. Unlike @c(SOIL-ALIGN/SIFT3D:DESCRIPTORS)
-function, this function accepts an (original) array of octets which is
-later converted to an array of single floats using @c(PREPROCESS)."
-  (let ((hash (image-hash array))
-        (name (enough-namestring (truename name) (truename "."))))
-    (sqlite:with-open-database (db +db-name+)
+particular array the results are read from the database. The database
+uses SHA256 hash of the array as a key into the database. Unlike
+@c(SOIL-ALIGN/SIFT3D:DESCRIPTORS) function, this function accepts an
+(original) array of octets which is later converted to an array of
+single floats using @c(PREPROCESS)."
+  (let ((hash (image-hash array)))
+    (ensure-directories-exist *db-pathname*)
+    (sqlite:with-open-database (db (uiop:native-namestring *db-pathname*))
       (%prepare-database db)
-      (multiple-value-bind (%hash %peak-threshold)
-          (sqlite:execute-one-row-m-v
-           db "select sha256, mindog from summary where name = ?"
-           name)
+      (let ((%peak-threshold
+             (sqlite:execute-single
+              db "select mindog from summary where sha256 = ?"
+              hash)))
         (cond
-          ((and %hash (equalp %hash hash) (<= %peak-threshold peak-threshold))
+          ((and %peak-threshold (<= %peak-threshold peak-threshold))
            ;; Descriptors are in the database
            (mapcar (lambda (descr) (ub8-vector->descriptor (car descr)))
                    (sqlite:execute-to-list
-                    db "select descr from descriptors where name = ?"
-                    name)))
+                    db "select descr from descriptors where sha256 = ?"
+                    hash)))
           (t
-           ;; Drop all stale entries
-           (sqlite:with-transaction db
-             (sqlite:execute-non-query
-              db "delete from summary where name = ?" name)
-             (sqlite:execute-non-query
-              db "delete from descriptors where name = ?" name))
            (let ((descriptors (sift3d:descriptors (funcall preprocess array) peak-threshold)))
              (sqlite:with-transaction db
+               ;; Drop all stale entries
                (sqlite:execute-non-query
-                db "insert into summary (name, sha256, mindog) values (?, ?, ?)"
-                name hash peak-threshold)
+                db "delete from summary where sha256 = ?" hash)
+               (sqlite:execute-non-query
+                db "delete from descriptors where sha256 = ?" hash)
+               (sqlite:execute-non-query
+                db "insert into summary (sha256, mindog) values (?, ?)"
+                hash peak-threshold)
                (loop for descr in descriptors do
                      (sqlite:execute-non-query
-                      db "insert into descriptors (name, descr) values (?, ?)"
-                      name (descriptor->ub8-vector descr))))
+                      db "insert into descriptors (sha256, descr) values (?, ?)"
+                      hash (descriptor->ub8-vector descr))))
              descriptors)))))))
