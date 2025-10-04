@@ -3,6 +3,7 @@
   (:local-nicknames (#:nndescent #:soil-align/matches-pynndescent)
                     (#:brute     #:soil-align/matches-bruteforce)
                     (#:sift3d    #:soil-align/sift3d)
+                    (#:db        #:soil-align/db)
                     (#:pre       #:soil-align/preprocessing)
                     (#:trans     #:soil-align/transform)
                     (#:atrans    #:soil-align/array-transform))
@@ -31,6 +32,9 @@
     (flag   :bruteforce
             :long        "bruteforce"
             :description "Use bruteforce matching of keypoints instead of pynndescent")
+    (flag   :no-db
+            :long        "no-db"
+            :description "Do not cache image descriptors in the database")
     (option :transform-matrix "m.npy"
             :short       #\m
             :long        "matrix"
@@ -88,6 +92,12 @@
   `(prog1 ,computation
      (log:info ,@args)))
 
+(declaim (inline))
+(defun descriptors (name array peak-threshold no-db-p)
+  (if no-db-p
+      (sift3d:descriptors (pre:clahe array) peak-threshold)
+      (db:descriptors-cached name array #'pre:clahe peak-threshold)))
+
 (defun main ()
   (sb-ext:disable-debugger)
   (let* ((args (get-arguments-or-fail))
@@ -98,14 +108,15 @@
          (fit-error      (%assoc :fit-error         args 100.0))
          (trans-image    (%assoc :transformed-image args))
          (trans-matrix   (%assoc :transform-matrix  args))
-         (reference      (%assoc :reference         args))
-         (source         (%assoc :source            args)))
+         (reference-name (%assoc :reference         args))
+         (source-name    (%assoc :source            args))
+         (no-db-p        (%assoc :no-db             args)))
     (unless (or trans-image trans-matrix)
       (format *error-output* "No output selected~%")
       (print-usage-and-quit))
     (log:config (if (%assoc :verbose args) :info 0))
-    (let ((source    (numpy-npy:load-array source))
-          (reference (numpy-npy:load-array reference)))
+    (let ((source    (numpy-npy:load-array source-name))
+          (reference (numpy-npy:load-array reference-name)))
       (unless (and (equalp (array-element-type source)    '(unsigned-byte 8))
                    (equalp (array-element-type reference) '(unsigned-byte 8)))
         (format *error-output* "Both input arrays must have dtype='uint8'")
@@ -113,12 +124,10 @@
       (log:info "Starting")
       (with-pynndescent (not bruteforcep)
         (let* ((desc-source
-                (log-eval (sift3d:descriptors
-                           (pre:clahe source) min-dog)
+                (log-eval (descriptors source-name source min-dog no-db-p)
                           "Got descriptors of the source image"))
                (desc-reference
-                (log-eval (sift3d:descriptors
-                           (pre:clahe reference) min-dog)
+                (log-eval (descriptors reference-name reference min-dog no-db-p)
                           "Got descriptors of the reference image"))
                (matches
                 (log-eval

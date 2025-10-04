@@ -21,10 +21,14 @@
                :parse-float
                :command-line-parse
                :numpy-npy
+               :nibbles
+               :ironclad
+               :sqlite
                :soil-align/pynndescent-so
                :soil-align/util
                :soil-align/preprocessing
                :soil-align/sift3d
+               :soil-align/db
                :soil-align/matches-bruteforce
                :soil-align/matches-pynndescent
                :soil-align/transform
