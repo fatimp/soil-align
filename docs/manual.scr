@@ -44,9 +44,9 @@
    Утилита командной строки имеет следующий интерфейс (выводится при запуске без
    аргументов):
    @begin(code)
-Usage: soil-align [-v|--verbose] [--bruteforce] [-m|--matrix m.npy]
-                  [-o|--image out.npy] [--min-dog P] [--dist-ratio C]
-                  [--fit-error E] [--min-inliers N]
+Usage: soil-align [-v|--verbose] [--bruteforce] [--no-db] [-t|--threads N]
+                  [-m|--matrix m.npy] [-o|--image out.npy] [--min-dog P]
+                  [--dist-ratio C] [--fit-error E] [--min-inliers N]
                   reference source
 
 Description of flags and options
@@ -56,6 +56,8 @@ Description of flags and options
 --min-dog P            The smallest allowed absolute DoG value, as a fraction of the largest
 -o|--image out.npy     Output file name for a transformed image (in numpy format)
 -m|--matrix m.npy      Output file name for a transform matrix (in numpy format)
+-t|--threads N         Number of threads to use
+--no-db                Do not cache image descriptors in the database
 --bruteforce           Use bruteforce matching of keypoints instead of pynndescent
 -v|--verbose           Be verbose
    @end(code)

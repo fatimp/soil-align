@@ -57,7 +57,7 @@
             :fn          #'parse-ratio->1)
     (option :fit-error   "E"
             :long        "fit-error"
-            :description "The maximal allowed fit error to treat a sampler as inlier"
+            :description "The maximal allowed fit error to treat a sample as inlier"
             :fn          #'parse-float)
     (option :min-inliers "N"
             :long        "min-inliers"
