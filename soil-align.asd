@@ -24,6 +24,7 @@
                :nibbles
                :ironclad
                :sqlite
+               (:feature :freebsd :freebsd-sysctl)
                :soil-align/pynndescent-so
                :soil-align/util
                :soil-align/preprocessing

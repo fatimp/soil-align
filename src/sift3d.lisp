@@ -6,7 +6,8 @@
 (defpackage soil-align/sift3d
   (:use #:cl)
   (:local-nicknames (#:util #:soil-align/util))
-  (:export #:descriptors))
+  (:export #:descriptors
+           #:set-num-threads))
 (in-package :soil-align/sift3d)
 
 ;; Libraries
@@ -277,3 +278,7 @@ descriptors."
                     (setf (aref descriptor j)
                           (cffi:mem-aref matrix-data :float (+ idx j))))
               descriptor)))))
+
+;; Utility function to tell OpenMP not to use all available CPU resources
+(cffi:defcfun ("omp_set_num_threads" set-num-threads) :void
+  (num-threads :int))

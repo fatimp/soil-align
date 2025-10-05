@@ -35,6 +35,10 @@
     (flag   :no-db
             :long        "no-db"
             :description "Do not cache image descriptors in the database")
+    (option :nthreads    "N"
+            :long        "threads"
+            :short       #\t
+            :description "Number of threads to use")
     (option :transform-matrix "m.npy"
             :short       #\m
             :long        "matrix"
@@ -43,15 +47,15 @@
             :short       #\o
             :long        "image"
             :description "Output file name for a transformed image (in numpy format)")
-    (option :min-dog "P"
+    (option :min-dog     "P"
             :long        "min-dog"
             :description "The smallest allowed absolute DoG value, as a fraction of the largest"
             :fn          #'parse-ratio-<1)
-    (option :dist-ratio "C"
+    (option :dist-ratio  "C"
             :long        "dist-ratio"
             :description "Controls what we consider a match"
-            :fn         #'parse-ratio->1)
-    (option :fit-error "E"
+            :fn          #'parse-ratio->1)
+    (option :fit-error   "E"
             :long        "fit-error"
             :description "The maximal allowed fit error to treat a sampler as inlier"
             :fn          #'parse-float)
@@ -98,6 +102,19 @@
       (sift3d:descriptors (pre:clahe array) peak-threshold)
       (db:descriptors-cached array #'pre:clahe peak-threshold)))
 
+(declaim (inline default-thread-number))
+(defun default-thread-number ()
+  #+freebsd
+  (min (floor (freebsd-sysctl:sysctl-by-name "kern.smp.cores") 2) 10)
+  #-freebsd
+  (progn
+    (log:warn
+     #.(concatenate
+        'string
+        "Cannot get default number of threads and will use only 1. "
+        "Use --threads to override this behavior."))
+    1))
+
 (defun main ()
   (sb-ext:disable-debugger)
   (let* ((args (get-arguments-or-fail))
@@ -110,11 +127,13 @@
          (trans-matrix   (%assoc :transform-matrix  args))
          (reference      (%assoc :reference         args))
          (source         (%assoc :source            args))
-         (no-db-p        (%assoc :no-db             args)))
+         (no-db-p        (%assoc :no-db             args))
+         ;; Do not evaluate default here
+         (nthreads       (%assoc :nthreads          args)))
     (unless (or trans-image trans-matrix)
       (format *error-output* "No output selected~%")
       (print-usage-and-quit))
-    (log:config (if (%assoc :verbose args) :info 0))
+    (log:config (if (%assoc :verbose args) :info :warn))
     (let ((source    (numpy-npy:load-array source))
           (reference (numpy-npy:load-array reference)))
       (unless (and (equalp (array-element-type source)    '(unsigned-byte 8))
@@ -122,6 +141,9 @@
         (format *error-output* "Both input arrays must have dtype='uint8'")
         (print-usage-and-quit))
       (log:info "Starting")
+      (let ((nthreads (or nthreads (default-thread-number))))
+        (log:info "Will use ~d threads" nthreads)
+        (sift3d:set-num-threads nthreads))
       (with-pynndescent (not bruteforcep)
         (let* ((desc-source
                 (log-eval (descriptors source min-dog no-db-p)
