@@ -61,6 +61,7 @@
     (option :nthreads    "N"
             :long        "threads"
             :short       #\t
+            :fn          #'parse-integer
             :description "Number of threads to use")
     (option :transform-matrix "m.npy"
             :short       #\m
