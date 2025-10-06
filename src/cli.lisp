@@ -19,6 +19,14 @@
   :documentation "Path where the cache is stored"
   :test #'equalp)
 
+(alexandria:define-constant +log-pathname+
+    #+unix
+    #p"~/.local/share/soil-align/log"
+    #-unix
+    (error "I don't know a suitable location where I can store the log file.")
+  :documentation "Path where the log is stored"
+  :test #'equalp)
+
 (serapeum:-> get-db-pathname ()
              (values pathname &optional))
 (defun get-db-pathname ()
@@ -155,6 +163,7 @@
       (format *error-output* "No output selected~%")
       (print-usage-and-quit))
     (log:config (if (%assoc :verbose args) :info :warn))
+    (log:config :daily +log-pathname+ :backup nil)
     (let ((source    (numpy-npy:load-array source))
           (reference (numpy-npy:load-array reference)))
       (unless (and (equalp (array-element-type source)    '(unsigned-byte 8))
