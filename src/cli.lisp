@@ -2,6 +2,7 @@
   (:use #:cl #:command-line-parse #:parse-float)
   (:local-nicknames (#:nndescent #:soil-align/matches-pynndescent)
                     (#:brute     #:soil-align/matches-bruteforce)
+                    (#:util      #:soil-align/util)
                     (#:sift3d    #:soil-align/sift3d)
                     (#:db        #:soil-align/db)
                     (#:pre       #:soil-align/preprocessing)
@@ -9,6 +10,20 @@
                     (#:atrans    #:soil-align/array-transform))
   (:export #:main))
 (in-package :soil-align/cli)
+
+(alexandria:define-constant +db-pathname+
+    #+unix
+    #p"~/.local/share/soil-align/descriptors.sqlite"
+    #-unix
+    (error "I don't know a suitable location where I can store the database.")
+  :documentation "Path where the cache is stored"
+  :test #'equalp)
+
+(serapeum:-> get-db-pathname ()
+             (values pathname &optional))
+(defun get-db-pathname ()
+  (let ((override (sb-posix:getenv "SOIL_ALIGN_DB")))
+    (if override (pathname override) +db-pathname+)))
 
 (defun parse-ratio-<1 (string)
   (let ((x (parse-float string)))
@@ -97,10 +112,15 @@
      (log:info ,@args)))
 
 (declaim (inline))
-(defun descriptors (array peak-threshold no-db-p)
-  (if no-db-p
-      (sift3d:descriptors (pre:clahe array) peak-threshold)
-      (db:descriptors-cached array #'pre:clahe peak-threshold)))
+(serapeum:-> descriptors
+             ((util:image (unsigned-byte 8))
+              (double-float 0d0 1d0)
+              (or pathname null))
+             (values list &optional))
+(defun descriptors (array peak-threshold db-pathname)
+  (if db-pathname
+      (db:descriptors-cached array #'pre:clahe db-pathname peak-threshold)
+      (sift3d:descriptors (pre:clahe array) peak-threshold)))
 
 (declaim (inline default-thread-number))
 (defun default-thread-number ()
@@ -129,7 +149,8 @@
          (source         (%assoc :source            args))
          (no-db-p        (%assoc :no-db             args))
          ;; Do not evaluate default here
-         (nthreads       (%assoc :nthreads          args)))
+         (nthreads       (%assoc :nthreads          args))
+         (db-pathname (if (not no-db-p) (get-db-pathname))))
     (unless (or trans-image trans-matrix)
       (format *error-output* "No output selected~%")
       (print-usage-and-quit))
@@ -146,10 +167,10 @@
         (sift3d:set-num-threads nthreads))
       (with-pynndescent (not bruteforcep)
         (let* ((desc-source
-                (log-eval (descriptors source min-dog no-db-p)
+                (log-eval (descriptors source min-dog db-pathname)
                           "Got descriptors of the source image"))
                (desc-reference
-                (log-eval (descriptors reference min-dog no-db-p)
+                (log-eval (descriptors reference min-dog db-pathname)
                           "Got descriptors of the reference image"))
                (matches
                 (log-eval

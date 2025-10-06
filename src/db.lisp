@@ -2,18 +2,8 @@
   (:use #:cl)
   (:local-nicknames (#:util   #:soil-align/util)
                     (#:sift3d #:soil-align/sift3d))
-  (:export #:prepare-database
-           #:*db-pathname*
-           #:descriptors-cached))
+  (:export #:descriptors-cached))
 (in-package :soil-align/db)
-
-(declaim (type pathname *db-pathname*))
-(defparameter *db-pathname*
-  #+unix
-  #p"~/.local/share/soil-align/descriptors.sqlite"
-  #-unix
-  (error "I don't know a suitable location where I can store the database.")
-  "Path where the cache is stored")
 
 (declaim (inline convert-to-simple-array))
 (defun convert-to-simple-array (sequence)
@@ -61,7 +51,7 @@
                 (nibbles:ieee-single-ref/le storable (* i 4))))
     result))
 
-(defun %prepare-database (db)
+(defun prepare-database (db)
   (sqlite:execute-non-query
    db "create table if not exists summary (sha256 blob primary key, mindog real not null);")
   (sqlite:execute-non-query
@@ -70,28 +60,26 @@
          "create table if not exists descriptors (sha256 blob not null, "
          "descr blob not null);")))
 
-(defun prepare-database ()
-  (sqlite:with-open-database (db (uiop:native-namestring *db-pathname*))
-    (%prepare-database db)))
-
 (serapeum:-> descriptors-cached
              ((util:image (unsigned-byte 8))
               (serapeum:-> ((util:image (unsigned-byte 8)))
                            (values (util:image single-float) &optional))
+              pathname
               &optional (double-float 0d0 1d0))
              (values list &optional))
-(defun descriptors-cached (array preprocess &optional (peak-threshold 1d-1))
+(defun descriptors-cached (array preprocess db-pathname &optional (peak-threshold 1d-1))
   "Calculate image descriptors using 3D SIFT and cache them in a
 database. The next time the descriptors are calculated for this
 particular array the results are read from the database. The database
 uses SHA256 hash of the array as a key into the database. Unlike
 @c(SOIL-ALIGN/SIFT3D:DESCRIPTORS) function, this function accepts an
 (original) array of octets which is later converted to an array of
-single floats using @c(PREPROCESS)."
+single floats using @c(PREPROCESS). @c(PATHNAME) argument is a path to
+the database."
   (let ((hash (image-hash array)))
-    (ensure-directories-exist *db-pathname*)
-    (sqlite:with-open-database (db (uiop:native-namestring *db-pathname*))
-      (%prepare-database db)
+    (ensure-directories-exist db-pathname)
+    (sqlite:with-open-database (db (uiop:native-namestring db-pathname))
+      (prepare-database db)
       (let ((%peak-threshold
              (sqlite:execute-single
               db "select mindog from summary where sha256 = ?"
