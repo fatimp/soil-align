@@ -200,7 +200,7 @@
             (when trans-image
               (numpy-npy:store-array
                (log-eval
-                (atrans:apply-transform (pre:normalize-image source) matrix)
+                (atrans:apply-transform source matrix)
                 "Computed a transformed image")
                trans-image))
             (log:info "Summary: ~d/~d descriptors, ~d matches, ~d inliers, ~f fit error"

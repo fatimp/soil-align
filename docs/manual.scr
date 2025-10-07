@@ -78,7 +78,6 @@ Description of flags and options
   @title(API)
   Пакет @c(soil-align/preprocessing):
   @cl:with-package[name="soil-align/preprocessing"](
-    @cl:doc(function normalize-image)
     @cl:doc(function clahe)
   )
 

@@ -4,8 +4,7 @@
   (:export #:image
            #:histogram
            #:bin-dimensions
-           #:clahe
-           #:normalize-image))
+           #:clahe))
 (in-package :soil-align/preprocessing)
 
 (serapeum:defconstructor bin-dimensions
@@ -180,15 +179,4 @@ dimensions of a single histogram."
     (util:loop-array (result (i j k))
       (setf (aref result i j k)
             (clahe-transform-pixel cdf (aref image i j k) bin-dimensions i j k)))
-    result))
-
-(serapeum:-> normalize-image ((util:image (unsigned-byte 8)))
-             (values (util:image single-float) &optional))
-(defun normalize-image (image)
-  "Convert an image to an array of floats in the range \\([0, 1]\\)."
-  (declare (optimize (speed 3)))
-  (let ((result (make-array (array-dimensions image) :element-type 'single-float)))
-    (loop for i below (array-total-size result) do
-          (setf (row-major-aref result i)
-                (/ (row-major-aref image i) 255.0)))
     result))
