@@ -11,7 +11,8 @@
            #:+descriptor-length+
            #:ffi-error
            #:transpose
-           #:interpolate))
+           #:interpolate
+           #:cut-from-center))
 (in-package :soil-align/util)
 
 (define-condition ffi-error (error)
@@ -126,3 +127,27 @@
 
                (v (interp1d v0 v1 ri)))
           v)))))
+
+(serapeum:-> cut-from-center ((image (unsigned-byte 8)) alexandria:positive-fixnum)
+             (values (image (unsigned-byte 8))
+                     alexandria:non-negative-fixnum
+                     alexandria:non-negative-fixnum
+                     alexandria:non-negative-fixnum
+                     &optional))
+(defun cut-from-center (array side)
+  (declare (optimize (speed 3)))
+  (let* ((h (array-dimension array 0))
+         (w (array-dimension array 1))
+         (d (array-dimension array 2))
+         (%h (min h side))
+         (%w (min w side))
+         (%d (min d side))
+         (off-x (floor (- h %h) 2))
+         (off-y (floor (- w %w) 2))
+         (off-z (floor (- d %d) 2))
+         (result (make-array (list %h %w %d)
+                             :element-type (array-element-type array))))
+    (loop-array (result (i j k))
+     (setf (aref result i j k)
+           (aref array (+ i off-x) (+ j off-y) (+ k off-z))))
+    (values result off-x off-y off-z)))
