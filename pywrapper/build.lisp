@@ -1,5 +1,5 @@
 (defpackage pywrapper
-  (:use #:cl #:split-sequence))
+  (:use #:cl #:cl-ppcre))
 (in-package :pywrapper)
 
 (defclass asdf::pywrapper (asdf:source-file)
@@ -16,15 +16,11 @@
     (t                   (error "unsupported OS"))))
 
 (defun get-python-flags ()
-  (remove-if
-   (lambda (token)
-     (member token (list "" (concatenate 'string '(#\NewLine))) :test #'string=))
-   (split-sequence
-    #\Space
-    (with-output-to-string (out)
-      (uiop:run-program
-       '("python-config" "--cflags" "--ldflags" "--embed")
-       :output out)))))
+  (split "[ \\n]+"
+         (with-output-to-string (out)
+           (uiop:run-program
+            '("python-config" "--cflags" "--ldflags" "--embed")
+            :output out))))
 
 (defun get-numpy-flags ()
   (concatenate

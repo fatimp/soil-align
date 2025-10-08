@@ -4,4 +4,4 @@
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :description "Building facility for soil-align"
   :components ((:file "build"))
-  :depends-on (:split-sequence))
+  :depends-on (:cl-ppcre))
