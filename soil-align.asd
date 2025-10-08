@@ -34,6 +34,7 @@
                :soil-align/matches-pynndescent
                :soil-align/transform
                :soil-align/array-transform
+               :soil-align/io
                :soil-align/cli)
   :build-operation program-op
   :build-pathname "soil-align"

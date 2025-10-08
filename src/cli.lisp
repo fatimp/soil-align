@@ -5,6 +5,7 @@
                     (#:util      #:soil-align/util)
                     (#:sift3d    #:soil-align/sift3d)
                     (#:db        #:soil-align/db)
+                    (#:io        #:soil-align/io)
                     (#:pre       #:soil-align/preprocessing)
                     (#:trans     #:soil-align/transform)
                     (#:atrans    #:soil-align/array-transform))
@@ -154,12 +155,8 @@
       (error 'util:user-input-error :message "No output selected"))
     (log:config (if (%assoc :verbose args) :info :warn))
     (log:config :daily +log-pathname+ :backup nil)
-    (let ((source    (numpy-npy:load-array source))
-          (reference (numpy-npy:load-array reference)))
-      (unless (and (equalp (array-element-type source)    '(unsigned-byte 8))
-                   (equalp (array-element-type reference) '(unsigned-byte 8)))
-        (error 'util:user-input-error
-               :message "Both input arrays must have dtype='uint8'"))
+    (let ((source    (io:read-image source))
+          (reference (io:read-image reference)))
       (log:info "Starting")
       (let ((nthreads (or nthreads (default-thread-number))))
         (log:info "Will use ~d threads" nthreads)
@@ -187,7 +184,7 @@
             (when trans-matrix
               (numpy-npy:store-array matrix trans-matrix))
             (when trans-image
-              (numpy-npy:store-array
+              (io:write-image
                (log-eval
                 (atrans:apply-transform source matrix)
                 "Computed a transformed image")

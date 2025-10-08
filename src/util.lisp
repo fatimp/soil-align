@@ -14,7 +14,8 @@
            #:generic-error
            #:internal-error
            #:ffi-error
-           #:user-input-error))
+           #:user-input-error
+           #:io-error))
 (in-package :soil-align/util)
 
 (defconstant +descriptor-offset+ 3)
@@ -144,3 +145,9 @@
             :initarg :message))
   (:report (lambda (c s)
              (format s "User input error: ~a" (error-message c)))))
+
+(define-condition io-error (generic-error)
+  ((message :reader  error-message
+            :initarg :message))
+  (:report (lambda (c s)
+             (format s "I/O error: ~a" (error-message c)))))
