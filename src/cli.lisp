@@ -64,6 +64,11 @@
             :short       #\t
             :fn          #'parse-integer
             :description "Number of threads to use")
+    (option :workspace-side "S"
+            :long        "workspace-side"
+            :short       #\w
+            :fn          #'parse-integer
+            :description "Side of a workspace which is cut from center of the input images")
     (option :transform-matrix "m.npy"
             :short       #\m
             :long        "matrix"
@@ -136,6 +141,34 @@
         "Use --threads to override this behavior."))
     1))
 
+(serapeum:-> load-and-maybe-cut
+             ((or string pathname) (or null alexandria:positive-fixnum))
+             (values (util:image (unsigned-byte 8))
+                     alexandria:non-negative-fixnum
+                     alexandria:non-negative-fixnum
+                     alexandria:non-negative-fixnum
+                     &optional))
+(defun load-and-maybe-cut (pathname side)
+  (let ((array (io:read-image pathname)))
+    (if side
+        (util:cut-from-center array side)
+        (values array 0 0 0))))
+
+(serapeum:-> add-offsets!
+             (alexandria:non-negative-fixnum
+              alexandria:non-negative-fixnum
+              alexandria:non-negative-fixnum
+              list)
+             (values list &optional))
+(defun add-offsets! (off-x off-y off-z descriptors)
+  (declare (optimize (speed 3)))
+  (unless (= off-x off-y off-z 0)
+    (loop for desc of-type util:descriptor in descriptors do
+          (incf (aref desc 0) off-x)
+          (incf (aref desc 1) off-y)
+          (incf (aref desc 2) off-z)))
+  descriptors)
+
 (defun %main ()
   (let* ((args (parse-argv *parser*))
          (min-dog (float (%assoc :min-dog           args 0.1) 0d0))
@@ -148,6 +181,7 @@
          (reference      (%assoc :reference         args))
          (source         (%assoc :source            args))
          (no-db-p        (%assoc :no-db             args))
+         (workspace-side (%assoc :workspace-side    args))
          ;; Do not evaluate default here
          (nthreads       (%assoc :nthreads          args))
          (db-pathname (if (not no-db-p) (get-db-pathname))))
@@ -155,8 +189,12 @@
       (error 'util:user-input-error :message "No output selected"))
     (log:config (if (%assoc :verbose args) :info :warn))
     (log:config :daily +log-pathname+ :backup nil)
-    (let ((source    (io:read-image source))
-          (reference (io:read-image reference)))
+    (util:rmvb (((source    sx sy sz) (load-and-maybe-cut source    workspace-side))
+                ((reference rx ry rz) (load-and-maybe-cut reference workspace-side)))
+      ;; Run a full GC because uncut arrays may be really big, we need
+      ;; to collect them now because later we will run foreign code
+      ;; which allocates a lot.
+      (sb-ext:gc :full t)
       (log:info "Starting")
       (let ((nthreads (or nthreads (default-thread-number))))
         (log:info "Will use ~d threads" nthreads)
@@ -170,7 +208,9 @@
                           "Got descriptors of the reference image"))
                (matches
                 (log-eval
-                 (find-matches desc-reference desc-source bruteforcep dist-ratio)
+                 (find-matches (add-offsets! rx ry rz desc-reference)
+                               (add-offsets! sx sy sz desc-source)
+                               bruteforcep dist-ratio)
                  "Found matches between images")))
           (multiple-value-bind (matrix error inliers)
               (trans:affine-transform matches
@@ -186,7 +226,12 @@
             (when trans-image
               (io:write-image
                (log-eval
-                (atrans:apply-transform source matrix)
+                (atrans:apply-transform
+                 (if workspace-side
+                     ;; Load a bigger image once more
+                     (numpy-npy:load-array (%assoc :source args))
+                     source)
+                 matrix)
                 "Computed a transformed image")
                trans-image))
             (log:info "Summary: ~d/~d descriptors, ~d matches, ~d inliers, ~f fit error"
