@@ -9,16 +9,13 @@
            #:coordinate
            #:+descriptor-offset+
            #:+descriptor-length+
-           #:ffi-error
            #:transpose
-           #:interpolate))
+           #:interpolate
+           #:generic-error
+           #:internal-error
+           #:ffi-error
+           #:user-input-error))
 (in-package :soil-align/util)
-
-(define-condition ffi-error (error)
-  ((message :reader  ffi-error-message
-            :initarg :message))
-  (:report (lambda (c s)
-             (format s "FFI error: ~a" (ffi-error-message c)))))
 
 (defconstant +descriptor-offset+ 3)
 (defconstant +descriptor-length+ (- 771 +descriptor-offset+))
@@ -126,3 +123,24 @@
 
                (v (interp1d v0 v1 ri)))
           v)))))
+
+;; Where else to put this?
+(define-condition generic-error (error)
+  ()
+  (:documentation "Generic error which is explicitly signaled from soil-align"))
+
+(define-condition internal-error (generic-error)
+  ()
+  (:documentation "Error which is not in any way related to the user input"))
+
+(define-condition ffi-error (internal-error)
+  ((message :reader  error-message
+            :initarg :message))
+  (:report (lambda (c s)
+             (format s "FFI error: ~a" (error-message c)))))
+
+(define-condition user-input-error (generic-error)
+  ((message :reader  error-message
+            :initarg :message))
+  (:report (lambda (c s)
+             (format s "User input error: ~a" (error-message c)))))

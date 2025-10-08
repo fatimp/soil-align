@@ -36,13 +36,13 @@
 (defun parse-ratio-<1 (string)
   (let ((x (parse-float string)))
     (unless (<= 0 x 1)
-      (error "A ratio must be in the range [0, 1]"))
+      (error 'util:user-input-error :message "A ratio must be in the range [0, 1]"))
     x))
 
 (defun parse-ratio->1 (string)
   (let ((x (parse-float string)))
     (unless (>= x 1)
-      (error "A ratio must be bigger than 1"))
+      (error 'util:user-input-error :message "A ratio must be bigger than 1"))
     x))
 
 (defparameter *parser*
@@ -90,15 +90,6 @@
    (argument :reference "reference")
    (argument :source    "source")))
 
-(defun print-usage-and-quit ()
-  (print-usage *parser* "soil-align")
-  (uiop:quit 1))
-
-(defun get-arguments-or-fail ()
-  (handler-case
-      (parse-argv *parser*)
-    (error () (print-usage-and-quit))))
-
 (defmacro with-pynndescent (initialize &body body)
   `(cond
      (,initialize
@@ -144,9 +135,8 @@
         "Use --threads to override this behavior."))
     1))
 
-(defun main ()
-  (sb-ext:disable-debugger)
-  (let* ((args (get-arguments-or-fail))
+(defun %main ()
+  (let* ((args (parse-argv *parser*))
          (min-dog (float (%assoc :min-dog           args 0.1) 0d0))
          (bruteforcep    (%assoc :bruteforce        args))
          (min-inliers    (%assoc :min-inliers       args 0.8))
@@ -161,16 +151,15 @@
          (nthreads       (%assoc :nthreads          args))
          (db-pathname (if (not no-db-p) (get-db-pathname))))
     (unless (or trans-image trans-matrix)
-      (format *error-output* "No output selected~%")
-      (print-usage-and-quit))
+      (error 'util:user-input-error :message "No output selected"))
     (log:config (if (%assoc :verbose args) :info :warn))
     (log:config :daily +log-pathname+ :backup nil)
     (let ((source    (numpy-npy:load-array source))
           (reference (numpy-npy:load-array reference)))
       (unless (and (equalp (array-element-type source)    '(unsigned-byte 8))
                    (equalp (array-element-type reference) '(unsigned-byte 8)))
-        (format *error-output* "Both input arrays must have dtype='uint8'")
-        (print-usage-and-quit))
+        (error 'util:user-input-error
+               :message "Both input arrays must have dtype='uint8'"))
       (log:info "Starting")
       (let ((nthreads (or nthreads (default-thread-number))))
         (log:info "Will use ~d threads" nthreads)
@@ -207,5 +196,22 @@
                       (length desc-source)
                       (length desc-reference)
                       (length matches)
-                      inliers error))))))
+                      inliers error)))))))
+
+(deftype foreign-user-input-error () '(or cmd-line-parse-error))
+
+(defun handle-error (c)
+  (princ c *error-output*)
+  (terpri *error-output*)
+  (if (typep c '(and (or util:internal-error (not util:generic-error))
+                     (not foreign-user-input-error)))
+      (sb-debug:backtrace 20 *error-output*)
+      (print-usage *parser* "soil-align"))
+  (uiop:quit 1))
+
+(defun main ()
+  (sb-ext:disable-debugger)
+  (handler-bind
+      ((error #'handle-error))
+    (%main))
   (uiop:quit 0))
