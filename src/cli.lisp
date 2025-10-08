@@ -72,11 +72,11 @@
     (option :transform-matrix "m.npy"
             :short       #\m
             :long        "matrix"
-            :description "Output file name for a transform matrix (in numpy format)")
+            :description "Output file name for a transform matrix (.npy)")
     (option :transformed-image "out.npy"
             :short       #\o
             :long        "image"
-            :description "Output file name for a transformed image (in numpy format)")
+            :description "Output file name for a transformed image (.npy or .raw)")
     (option :min-dog     "P"
             :long        "min-dog"
             :description "The smallest allowed absolute DoG value, as a fraction of the largest"
