@@ -1,5 +1,20 @@
 # Changelog
 
+## Version 0.2
+
+* Incompatible change: the output image is stored as an array of octets
+  ('uint8') in the cli tool and `apply-transform` returns an array of type
+  `(simple-array (unsigned-byte 8) 3)`.
+* Incompatible change: `:min-inliers` default in `transform` is changed to `0.6`
+  which improves the transformation finding algorithm in a number of cases.
+* Improvement: Descriptors are stored in the database so they can be accessed
+  later if they are needed. Currently, the database needs to be removed manually
+  if it is not needed.
+* Improvement: Add an option `-t` to the CLI tool which selects a number of
+  working threads.
+* Improvement: Add an option `-w` to the CLI tool which selects a working area.
+* Improvement: The CLI tool now supports raw "format".
+
 ## Version 0.1
 
 Initial version. Basic image alignment using 3D SIFT + pynndescent + RANSAC
