@@ -6,6 +6,7 @@
            #:image
            #:histograms
            #:descriptor
+           #:fixed-entries
            #:coordinate
            #:+descriptor-offset+
            #:+descriptor-length+
@@ -21,10 +22,9 @@
 
 (defconstant +descriptor-offset+ 3)
 (defconstant +descriptor-length+ (- 771 +descriptor-offset+))
-(deftype image       (type) `(simple-array ,type 3))
-(deftype histograms  (type) `(simple-array ,type (* * * 256)))
-(deftype descriptor  ()     '(simple-array single-float (771)))
-(deftype coordinate  ()     '(simple-array single-float (3)))
+(deftype image      (type) `(simple-array ,type 3))
+(deftype histograms (type) `(simple-array ,type (* * * 256)))
+(deftype fixed-entries (n) `(simple-array single-float (* ,n)))
 
 ;; Useful macros for iteration which supersede nested loops
 (defmacro loop-array ((array indices) &body body)

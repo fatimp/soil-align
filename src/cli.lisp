@@ -109,7 +109,7 @@
              ((util:image (unsigned-byte 8))
               (double-float 0d0 1d0)
               (or pathname null))
-             (values list &optional))
+             (values (util:fixed-entries 771) &optional))
 (defun descriptors (array peak-threshold db-pathname)
   (if db-pathname
       (db:descriptors-cached array #'pre:clahe db-pathname peak-threshold)
@@ -145,15 +145,15 @@
              (alexandria:non-negative-fixnum
               alexandria:non-negative-fixnum
               alexandria:non-negative-fixnum
-              list)
-             (values list &optional))
+              (util:fixed-entries 771))
+             (values (util:fixed-entries 771) &optional))
 (defun add-offsets! (off-x off-y off-z descriptors)
   (declare (optimize (speed 3)))
   (unless (= off-x off-y off-z 0)
-    (loop for desc of-type util:descriptor in descriptors do
-          (incf (aref desc 0) off-x)
-          (incf (aref desc 1) off-y)
-          (incf (aref desc 2) off-z)))
+    (loop for i below (array-dimension descriptors 0) do
+          (incf (aref descriptors i 0) off-x)
+          (incf (aref descriptors i 1) off-y)
+          (incf (aref descriptors i 2) off-z)))
   descriptors)
 
 (defun %main ()
@@ -222,8 +222,8 @@
                 "Computed a transformed image")
                trans-image))
             (log:info "Summary: ~d/~d descriptors, ~d matches, ~d inliers, ~f fit error"
-                      (length desc-source)
-                      (length desc-reference)
+                      (array-dimension desc-source 0)
+                      (array-dimension desc-reference 0)
                       (length matches)
                       inliers error)))))))
 

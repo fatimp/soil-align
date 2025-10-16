@@ -241,7 +241,7 @@
 
 ;; Now, high-level function for descriptor arrays
 (serapeum:-> descriptors ((util:image single-float) &optional (double-float 0d0 1d0))
-             (values list &optional))
+             (values (util:fixed-entries 771) &optional))
 (defun descriptors (array &optional (peak-threshold 1d-1))
   "Take an image (3D array of single-floats) and return a list of
 descriptors. The parameter @c(PEAK-THRESHOLD) controls a number of
@@ -266,18 +266,16 @@ descriptors."
           (matrix-data (cffi:foreign-slot-value matrix '(:struct matrix) 'data)))
       (unless (= desc-length 771)
         (error 'util:ffi-error :message "Got strange descriptors"))
-      (loop for i below n
-            for idx = (* i desc-length)
-            collect
-            ;; A descriptor is a vector of 771 single float elements.
-            ;; The first 3 elements are the keypoint's coordinate and
-            ;; the rest are arbitrary numbers which form a metric
-            ;; space [0, 1]^{768} with a Euclidean metric.
-            (let ((descriptor (make-array desc-length :element-type 'single-float)))
-              (loop for j below desc-length do
-                    (setf (aref descriptor j)
-                          (cffi:mem-aref matrix-data :float (+ idx j))))
-              descriptor)))))
+      (let ((descriptors (make-array (list n desc-length) :element-type 'single-float)))
+        ;; A descriptor is a vector of 771 single float elements.
+        ;; The first 3 elements are the keypoint's coordinate and
+        ;; the rest are arbitrary numbers which form a metric
+        ;; space [0, 1]^{768} with a Euclidean metric.
+        ;; SIFT3D returns them as an array with length Nx771
+        (loop for i below (array-total-size descriptors) do
+              (setf (row-major-aref descriptors i)
+                    (cffi:mem-aref matrix-data :float i)))
+        descriptors))))
 
 ;; Utility function to tell OpenMP not to use all available CPU resources
 (cffi:defcfun ("omp_set_num_threads" set-num-threads) :void

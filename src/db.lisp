@@ -26,38 +26,37 @@
      digest (sb-ext:array-storage-vector array))
     (ironclad:produce-digest digest)))
 
-(deftype storable-descriptor () '(simple-array (unsigned-byte 8) (#.(* 771 4))))
-
-(serapeum:-> descriptor->ub8-vector (util:descriptor)
-             (values storable-descriptor &optional))
-(defun descriptor->ub8-vector (descriptor)
+(serapeum:-> descriptors->ub8-vector ((util:fixed-entries 771))
+             (values (simple-array (unsigned-byte 8) (*)) &optional))
+(defun descriptors->ub8-vector (descriptors)
   (declare (optimize (speed 3)))
-  (let* ((length (length descriptor))
+  (let* ((length (array-total-size descriptors))
          (result (make-array (* length 4)
                              :element-type '(unsigned-byte 8))))
     (loop for i below length do
           (setf (nibbles:ieee-single-ref/le result (* i 4))
-                (aref descriptor i)))
+                (row-major-aref descriptors i)))
     result))
 
-(serapeum:-> ub8-vector->descriptor (storable-descriptor)
-             (values util:descriptor &optional))
-(defun ub8-vector->descriptor (storable)
+(serapeum:-> ub8-vector->descriptors ((simple-array (unsigned-byte 8) (*)))
+             (values (util:fixed-entries 771) &optional))
+(defun ub8-vector->descriptors (vector)
   (declare (optimize (speed 3)))
-  (let ((result (make-array (+ util:+descriptor-length+ util:+descriptor-offset+)
-                            :element-type 'single-float)))
-    (loop for i below (length result) do
-          (setf (aref result i)
-                (nibbles:ieee-single-ref/le storable (* i 4))))
+  (let* ((length (length vector))
+         (desc-length (+ util:+descriptor-length+ util:+descriptor-offset+))
+         (result (make-array (list (/ length desc-length 4) desc-length)
+                             :element-type 'single-float)))
+    (loop for i below (array-total-size result) do
+          (setf (row-major-aref result i)
+                (nibbles:ieee-single-ref/le vector (* i 4))))
     result))
 
 (defun prepare-database (db)
   (sqlite:execute-non-query
-   db "create table if not exists summary (sha256 blob primary key, mindog real not null);")
-  (sqlite:execute-non-query
    db #.(concatenate
          'string
-         "create table if not exists descriptors (sha256 blob not null, "
+         "create table if not exists descriptors (sha256 blob primary key, "
+         "mindog real not null, "
          "descr blob not null);")))
 
 (serapeum:-> descriptors-cached
@@ -66,7 +65,7 @@
                            (values (util:image single-float) &optional))
               pathname
               &optional (double-float 0d0 1d0))
-             (values list &optional))
+             (values (util:fixed-entries 771) &optional))
 (defun descriptors-cached (array preprocess db-pathname &optional (peak-threshold 1d-1))
   "Calculate image descriptors using 3D SIFT and cache them in a
 database. The next time the descriptors are calculated for this
@@ -80,30 +79,22 @@ the database."
     (ensure-directories-exist db-pathname)
     (sqlite:with-open-database (db (uiop:native-namestring db-pathname))
       (prepare-database db)
-      (let ((%peak-threshold
-             (sqlite:execute-single
-              db "select mindog from summary where sha256 = ?"
-              hash)))
+      (multiple-value-bind (peak-threshold-cached descriptors)
+          (sqlite:execute-one-row-m-v
+           db "select mindog, descr from descriptors where sha256 = ?"
+           hash)
         (cond
-          ((and %peak-threshold (<= %peak-threshold peak-threshold))
+          ((and peak-threshold-cached (<= peak-threshold-cached peak-threshold))
            ;; Descriptors are in the database
-           (mapcar (lambda (descr) (ub8-vector->descriptor (car descr)))
-                   (sqlite:execute-to-list
-                    db "select descr from descriptors where sha256 = ?"
-                    hash)))
+           (ub8-vector->descriptors descriptors))
           (t
            (let ((descriptors (sift3d:descriptors (funcall preprocess array) peak-threshold)))
              (sqlite:with-transaction db
                ;; Drop all stale entries
                (sqlite:execute-non-query
-                db "delete from summary where sha256 = ?" hash)
-               (sqlite:execute-non-query
                 db "delete from descriptors where sha256 = ?" hash)
                (sqlite:execute-non-query
-                db "insert into summary (sha256, mindog) values (?, ?)"
-                hash peak-threshold)
-               (loop for descr in descriptors do
-                     (sqlite:execute-non-query
-                      db "insert into descriptors (sha256, descr) values (?, ?)"
-                      hash (descriptor->ub8-vector descr))))
+                db "insert into descriptors (sha256, mindog, descr) values (?, ?, ?)"
+                hash peak-threshold
+                (descriptors->ub8-vector descriptors)))
              descriptors)))))))
