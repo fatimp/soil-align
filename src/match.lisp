@@ -6,14 +6,14 @@
 ;; Though implementing that algorithm exactly gives very poor results,
 ;; that's why we need this python library.
 
-(defpackage soil-align/matches-pynndescent
+(defpackage soil-align/match
   (:use #:cl)
   (:local-nicknames (#:util #:soil-align/util)
                     (#:ff   #:float-features))
   (:export #:match-descriptors
            #:nndescent-initialize
            #:nndescent-deinitialize))
-(in-package :soil-align/matches-pynndescent)
+(in-package :soil-align/match)
 
 (let ((pathname
        (asdf:output-file

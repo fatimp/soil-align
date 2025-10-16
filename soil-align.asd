@@ -30,8 +30,7 @@
                :soil-align/preprocessing
                :soil-align/sift3d
                :soil-align/db
-               :soil-align/matches-bruteforce
-               :soil-align/matches-pynndescent
+               :soil-align/match
                :soil-align/transform
                :soil-align/array-transform
                :soil-align/io

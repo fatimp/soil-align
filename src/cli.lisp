@@ -1,14 +1,13 @@
 (defpackage soil-align/cli
   (:use #:cl #:command-line-parse #:parse-float)
-  (:local-nicknames (#:nndescent #:soil-align/matches-pynndescent)
-                    (#:brute     #:soil-align/matches-bruteforce)
-                    (#:util      #:soil-align/util)
-                    (#:sift3d    #:soil-align/sift3d)
-                    (#:db        #:soil-align/db)
-                    (#:io        #:soil-align/io)
-                    (#:pre       #:soil-align/preprocessing)
-                    (#:trans     #:soil-align/transform)
-                    (#:atrans    #:soil-align/array-transform))
+  (:local-nicknames (#:match  #:soil-align/match)
+                    (#:util   #:soil-align/util)
+                    (#:sift3d #:soil-align/sift3d)
+                    (#:db     #:soil-align/db)
+                    (#:io     #:soil-align/io)
+                    (#:pre    #:soil-align/preprocessing)
+                    (#:trans  #:soil-align/transform)
+                    (#:atrans #:soil-align/array-transform))
   (:export #:main))
 (in-package :soil-align/cli)
 
@@ -53,9 +52,6 @@
             :short       #\v
             :long        "verbose"
             :description "Be verbose")
-    (flag   :bruteforce
-            :long        "bruteforce"
-            :description "Use bruteforce matching of keypoints instead of pynndescent")
     (flag   :no-db
             :long        "no-db"
             :description "Do not cache image descriptors in the database")
@@ -96,21 +92,12 @@
    (argument :reference "reference")
    (argument :source    "source")))
 
-(defmacro with-pynndescent (initialize &body body)
-  `(cond
-     (,initialize
-      (nndescent:nndescent-initialize)
-      (unwind-protect
-           (progn ,@body)
-        (nndescent:nndescent-deinitialize)))
-     (t
-      ,@body)))
-
-(declaim (inline find-matches))
-(defun find-matches (s1 s2 bruteforcep c)
-  (if bruteforcep
-      (brute:match-descriptors s1 s2 c)
-      (nndescent:match-descriptors s1 s2 c)))
+(defmacro with-pynndescent (&body body)
+  `(progn
+     (match:nndescent-initialize)
+     (unwind-protect
+          (progn ,@body)
+       (match:nndescent-deinitialize))))
 
 ;; Fucking LOG:INFO is a macro too
 (defmacro log-eval (computation &rest args)
@@ -172,7 +159,6 @@
 (defun %main ()
   (let* ((args (parse-argv *parser*))
          (min-dog (float (%assoc :min-dog           args 0.1) 0d0))
-         (bruteforcep    (%assoc :bruteforce        args))
          (min-inliers    (%assoc :min-inliers       args 0.6))
          (dist-ratio     (%assoc :dist-ratio        args 1.3))
          (fit-error      (%assoc :fit-error         args 100.0))
@@ -199,7 +185,7 @@
       (let ((nthreads (or nthreads (default-thread-number))))
         (log:info "Will use ~d threads" nthreads)
         (sift3d:set-num-threads nthreads))
-      (with-pynndescent (not bruteforcep)
+      (with-pynndescent
         (let* ((desc-source
                 (log-eval (descriptors source min-dog db-pathname)
                           "Got descriptors of the source image"))
@@ -208,9 +194,10 @@
                           "Got descriptors of the reference image"))
                (matches
                 (log-eval
-                 (find-matches (add-offsets! rx ry rz desc-reference)
-                               (add-offsets! sx sy sz desc-source)
-                               bruteforcep dist-ratio)
+                 (match:match-descriptors
+                  (add-offsets! rx ry rz desc-reference)
+                  (add-offsets! sx sy sz desc-source)
+                  dist-ratio)
                  "Found matches between images")))
           (multiple-value-bind (matrix error inliers)
               (trans:affine-transform matches
