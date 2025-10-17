@@ -2,7 +2,8 @@
   (:use #:cl)
   (:local-nicknames (#:util #:soil-align/util))
   (:export #:fit-pca
-           #:transform-pca))
+           #:transform-pca
+           #:invert-pca))
 (in-package :soil-align/pca)
 
 ;; Here the array of descriptors is transposed
@@ -94,3 +95,25 @@
                 (setf (row-major-aref result i)
                       (aref tr i))))
         result))))
+
+(serapeum:-> invert-pca
+             ((simple-array single-float (* *))
+              magicl:matrix/single-float
+              (simple-array single-float (768)))
+             (values (util:fixed-entries 768) &optional))
+(defun invert-pca (pca vt means)
+  ;; Compute a transposed result to ease column-major to row-major
+  ;; conversion
+  (let* ((matrix (magicl:make-tensor
+                  'magicl:matrix/single-float
+                  (reverse (array-dimensions pca))
+                  :layout :column-major
+                  :storage (sb-ext:array-storage-vector pca)))
+         (inverted (magicl::storage (magicl:mult vt matrix :transa :t)))
+         (result (make-array (list (array-dimension pca 0) 768)
+                             :element-type 'single-float)))
+    (loop for i below (array-total-size result) do
+          (setf (row-major-aref result i) (aref inverted i)))
+    (util:loop-array (result (i j))
+      (incf (aref result i j) (aref means j)))
+    result))
