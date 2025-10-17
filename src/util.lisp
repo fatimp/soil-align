@@ -7,7 +7,6 @@
            #:histograms
            #:descriptor
            #:fixed-entries
-           #:coordinate
            #:+descriptor-offset+
            #:+descriptor-length+
            #:transpose-3d
