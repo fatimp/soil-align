@@ -239,15 +239,31 @@
     :from-end t
     :initial-value body)))
 
+(serapeum:-> split-coords ((util:fixed-entries 771))
+             (values (util:fixed-entries 3) (util:fixed-entries 768) &optional))
+(defun split-coords (array)
+  (declare (optimize (speed 3)))
+  (let* ((length (array-dimension array 0))
+         (coords (make-array (list length util:+descriptor-offset+)
+                             :element-type 'single-float))
+         (descr  (make-array (list length util:+descriptor-length+)
+                             :element-type 'single-float)))
+    (loop for i below length do
+          (loop for j below util:+descriptor-offset+ do
+                (setf (aref coords i j) (aref array i j)))
+          (loop for j below util:+descriptor-length+ do
+                (setf (aref descr  i j) (aref array i (+ j util:+descriptor-offset+)))))
+    (values coords descr)))
+
 ;; Now, high-level function for descriptor arrays
 (serapeum:-> descriptors ((util:image single-float) &optional (double-float 0d0 1d0))
-             (values (util:fixed-entries 771) &optional))
+             (values (util:fixed-entries 3) (util:fixed-entries 768) &optional))
 (defun descriptors (array &optional (peak-threshold 1d-1))
-  "Take an image (3D array of single-floats) and return a list of
-descriptors. The parameter @c(PEAK-THRESHOLD) controls a number of
-descriptors, with smaller value providing more descriptors. Providing
-a value lesser than the default results in a great number of unstable
-descriptors."
+  "Take an image (3D array of single-floats) and return an array of
+keypoint coordinates and their descriptors. The parameter
+@c(PEAK-THRESHOLD) controls a number of descriptors, with smaller
+value providing more descriptors. Providing a value lesser than the
+default results in a great number of unstable descriptors."
   (with-sift3d-objects ((sift3d           sift3d)
                         ;; Here we call TRANSPOSE because Sift3D
                         ;; library accepts arrays in column-major
@@ -275,7 +291,7 @@ descriptors."
         (loop for i below (array-total-size descriptors) do
               (setf (row-major-aref descriptors i)
                     (cffi:mem-aref matrix-data :float i)))
-        descriptors))))
+        (split-coords descriptors)))))
 
 ;; Utility function to tell OpenMP not to use all available CPU resources
 (cffi:defcfun ("omp_set_num_threads" set-num-threads) :void

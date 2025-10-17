@@ -67,22 +67,6 @@
 (deftype dist-array    () '(pair-array single-float))
 (deftype indices-array () '(pair-array (unsigned-byte 32)))
 
-(serapeum:-> split-coords ((util:fixed-entries 771))
-             (values (util:fixed-entries 3) (util:fixed-entries 768) &optional))
-(defun split-coords (array)
-  (declare (optimize (speed 3)))
-  (let* ((length (array-dimension array 0))
-         (coords (make-array (list length util:+descriptor-offset+)
-                             :element-type 'single-float))
-         (descr  (make-array (list length util:+descriptor-length+)
-                             :element-type 'single-float)))
-    (loop for i below length do
-          (loop for j below util:+descriptor-offset+ do
-                (setf (aref coords i j) (aref array i j)))
-          (loop for j below util:+descriptor-length+ do
-                (setf (aref descr  i j) (aref array i (+ j util:+descriptor-offset+)))))
-    (values coords descr)))
-
 (serapeum:-> find-closest ((util:fixed-entries 768) (util:fixed-entries 768))
              (values dist-array indices-array &optional))
 (defun find-closest (s1 s2)
@@ -96,32 +80,32 @@
       (error 'util:ffi-error :message "Cannot find nearest neighbors"))
     (values *dists* *indices*)))
 
-(serapeum:-> match-descriptors ((util:fixed-entries 771)
-                                (util:fixed-entries 771)
+(serapeum:-> match-descriptors ((util:fixed-entries 3)
+                                (util:fixed-entries 3)
+                                (util:fixed-entries *)
+                                (util:fixed-entries *)
                                 &optional (single-float 0.0))
              (values list &optional))
-(defun match-descriptors (s1 s2 &optional (c 1.3))
+(defun match-descriptors (c1 c2 d1 d2 &optional (c 1.3))
   "Find matches between two sets of descriptors. The parameter @c(C)
 controls what we treat as a match. Bigger values result in a lesser
-number of more stable matches.
-
-Pynndescent is required for this function."
+number of more stable matches. \\(C_i\\) is an array of keypoint
+coordinates and \\(D_i\\) is an array of corresponding descriptors."
+  (declare (optimize (speed 3)))
   (flet ((row (xs i)
            (let ((dim (array-dimension xs 1)))
              (make-array dim
                          :element-type 'single-float
                          :initial-contents (loop for j below dim collect
                                                  (aref xs i j))))))
-    (util:rmvb (((c1 d1) (split-coords s1))
-                ((c2 d2) (split-coords s2)))
-      (let (matches)
-        (multiple-value-bind (dists indices)
-            (find-closest d1 d2)
-          (loop for i below (array-dimension dists 0)
-                for d1 = (aref dists i 0)
-                for d2 = (aref dists i 1)
-                when (< (* d1 c) d2) do
-                (push (cons (row c1 i)
-                            (row c2 (aref indices i 0)))
-                      matches)))
-        matches))))
+    (let (matches)
+      (multiple-value-bind (dists indices)
+          (find-closest d1 d2)
+        (loop for i below (array-dimension dists 0)
+              for d1 = (aref dists i 0)
+              for d2 = (aref dists i 1)
+              when (< (* d1 c) d2) do
+              (push (cons (row c1 i)
+                          (row c2 (aref indices i 0)))
+                    matches)))
+      matches)))

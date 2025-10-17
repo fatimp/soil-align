@@ -100,16 +100,18 @@
        (match:nndescent-deinitialize))))
 
 ;; Fucking LOG:INFO is a macro too
-(defmacro log-eval (computation &rest args)
-  `(prog1 ,computation
-     (log:info ,@args)))
+(defmacro log-eval ((computation &optional (values 1)) &rest args)
+  (let ((variables (loop repeat values collect (gensym))))
+    `(multiple-value-bind ,variables ,computation
+       (log:info ,@args)
+       (values ,@variables))))
 
 (declaim (inline))
 (serapeum:-> descriptors
              ((util:image (unsigned-byte 8))
               (double-float 0d0 1d0)
               (or pathname null))
-             (values (util:fixed-entries 771) &optional))
+             (values (util:fixed-entries 3) (util:fixed-entries 768) &optional))
 (defun descriptors (array peak-threshold db-pathname)
   (if db-pathname
       (db:descriptors-cached array #'pre:clahe db-pathname peak-threshold)
@@ -145,16 +147,16 @@
              (alexandria:non-negative-fixnum
               alexandria:non-negative-fixnum
               alexandria:non-negative-fixnum
-              (util:fixed-entries 771))
-             (values (util:fixed-entries 771) &optional))
-(defun add-offsets! (off-x off-y off-z descriptors)
+              (util:fixed-entries 3))
+             (values (util:fixed-entries 3) &optional))
+(defun add-offsets! (off-x off-y off-z keypoints)
   (declare (optimize (speed 3)))
   (unless (= off-x off-y off-z 0)
-    (loop for i below (array-dimension descriptors 0) do
-          (incf (aref descriptors i 0) off-x)
-          (incf (aref descriptors i 1) off-y)
-          (incf (aref descriptors i 2) off-z)))
-  descriptors)
+    (loop for i below (array-dimension keypoints 0) do
+          (incf (aref keypoints i 0) off-x)
+          (incf (aref keypoints i 1) off-y)
+          (incf (aref keypoints i 2) off-z)))
+  keypoints)
 
 (defun %main ()
   (let* ((args (parse-argv *parser*))
@@ -186,46 +188,48 @@
         (log:info "Will use ~d threads" nthreads)
         (sift3d:set-num-threads nthreads))
       (with-pynndescent
-        (let* ((desc-source
-                (log-eval (descriptors source min-dog db-pathname)
-                          "Got descriptors of the source image"))
-               (desc-reference
-                (log-eval (descriptors reference min-dog db-pathname)
-                          "Got descriptors of the reference image"))
-               (matches
-                (log-eval
-                 (match:match-descriptors
-                  (add-offsets! rx ry rz desc-reference)
-                  (add-offsets! sx sy sz desc-source)
-                  dist-ratio)
-                 "Found matches between images")))
-          (multiple-value-bind (matrix error inliers)
-              (trans:affine-transform matches
-                                      :min-inliers min-inliers
-                                      :max-iter    2000
-                                      :err         fit-error)
-            (log:info "Found a transform matrix")
-            (unless matrix
-              (log:error "Consensus is not achieved")
-              (uiop:quit 0))
-            (when trans-matrix
-              (numpy-npy:store-array matrix trans-matrix))
-            (when trans-image
-              (io:write-image
-               (log-eval
-                (atrans:apply-transform
-                 (if workspace-side
-                     ;; Load a bigger image once more
-                     (numpy-npy:load-array (%assoc :source args))
-                     source)
-                 matrix)
-                "Computed a transformed image")
-               trans-image))
-            (log:info "Summary: ~d/~d descriptors, ~d matches, ~d inliers, ~f fit error"
-                      (array-dimension desc-source 0)
-                      (array-dimension desc-reference 0)
-                      (length matches)
-                      inliers error)))))))
+        (util:rmvb (((source-kp source-desc)
+                     (log-eval
+                      ((descriptors source min-dog db-pathname) 2)
+                      "Got descriptors of the source image"))
+                    ((ref-kp ref-desc)
+                     (log-eval
+                      ((descriptors reference min-dog db-pathname) 2)
+                      "Got descriptors of the reference image")))
+          (let ((matches
+                 (log-eval
+                  ((match:match-descriptors
+                    (add-offsets! rx ry rz ref-kp)
+                    (add-offsets! sx sy sz source-kp)
+                    ref-desc source-desc dist-ratio))
+                  "Found matches between images")))
+            (multiple-value-bind (matrix error inliers)
+                (trans:affine-transform matches
+                                        :min-inliers min-inliers
+                                        :max-iter    2000
+                                        :err         fit-error)
+              (log:info "Found a transform matrix")
+              (unless matrix
+                (log:error "Consensus is not achieved")
+                (uiop:quit 0))
+              (when trans-matrix
+                (numpy-npy:store-array matrix trans-matrix))
+              (when trans-image
+                (io:write-image
+                 (log-eval
+                  ((atrans:apply-transform
+                    (if workspace-side
+                        ;; Load a bigger image once more
+                        (numpy-npy:load-array (%assoc :source args))
+                        source)
+                    matrix))
+                  "Computed a transformed image")
+                 trans-image))
+              (log:info "Summary: ~d/~d descriptors, ~d matches, ~d inliers, ~f fit error"
+                        (array-dimension source-kp 0)
+                        (array-dimension ref-kp 0)
+                        (length matches)
+                        inliers error))))))))
 
 (deftype foreign-user-input-error () '(or cmd-line-parse-error))
 
