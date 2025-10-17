@@ -5,6 +5,7 @@
   (:export #:descriptors-cached))
 (in-package :soil-align/db)
 
+#|
 (declaim (inline convert-to-simple-array))
 (defun convert-to-simple-array (sequence)
   (coerce sequence '(simple-array (unsigned-byte 8) (*))))
@@ -98,3 +99,8 @@ the database."
                 hash peak-threshold
                 (descriptors->ub8-vector descriptors)))
              descriptors)))))))
+|#
+
+(defun descriptors-cached (array preprocess db-pathname &optional (peak-threshold 1d-1))
+  (declare (ignore db-pathname))
+  (sift3d:descriptors (funcall preprocess array) peak-threshold))
