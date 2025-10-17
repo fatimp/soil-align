@@ -82,8 +82,8 @@
 
 (serapeum:-> match-descriptors ((util:fixed-entries 3)
                                 (util:fixed-entries 3)
-                                (util:fixed-entries *)
-                                (util:fixed-entries *)
+                                (util:fixed-entries 768)
+                                (util:fixed-entries 768)
                                 &optional (single-float 0.0))
              (values list &optional))
 (defun match-descriptors (c1 c2 d1 d2 &optional (c 1.3))

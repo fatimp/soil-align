@@ -29,8 +29,8 @@
                :soil-align/pynndescent-so
                :soil-align/util
                :soil-align/preprocessing
-               :soil-align/sift3d
                :soil-align/pca
+               :soil-align/sift3d
                :soil-align/db
                :soil-align/match
                :soil-align/transform

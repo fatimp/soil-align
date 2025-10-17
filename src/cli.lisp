@@ -114,7 +114,7 @@
              (values (util:fixed-entries 3) (util:fixed-entries 768) &optional))
 (defun descriptors (array peak-threshold db-pathname)
   (if db-pathname
-      (db:descriptors-cached array #'pre:clahe db-pathname peak-threshold)
+      (db:descriptors-cached array db-pathname peak-threshold)
       (sift3d:descriptors (pre:clahe array) peak-threshold)))
 
 (declaim (inline default-thread-number))

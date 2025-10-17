@@ -102,6 +102,7 @@
               (simple-array single-float (768)))
              (values (util:fixed-entries 768) &optional))
 (defun invert-pca (pca vt means)
+  (declare (optimize (speed 3)))
   ;; Compute a transposed result to ease column-major to row-major
   ;; conversion
   (let* ((matrix (magicl:make-tensor
@@ -112,6 +113,7 @@
          (inverted (magicl::storage (magicl:mult vt matrix :transa :t)))
          (result (make-array (list (array-dimension pca 0) 768)
                              :element-type 'single-float)))
+    (declare (type (simple-array single-float (*)) inverted))
     (loop for i below (array-total-size result) do
           (setf (row-major-aref result i) (aref inverted i)))
     (util:loop-array (result (i j))
