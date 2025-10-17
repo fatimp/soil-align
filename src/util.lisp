@@ -10,7 +10,8 @@
            #:coordinate
            #:+descriptor-offset+
            #:+descriptor-length+
-           #:transpose
+           #:transpose-3d
+           #:transpose-2d
            #:interpolate
            #:cut-from-center
            #:generic-error
@@ -67,15 +68,26 @@
     :from-end t
     :initial-value body)))
 
-(serapeum:-> transpose ((image single-float))
+(serapeum:-> transpose-3d ((image single-float))
              (values (image single-float) &optional))
-(defun transpose (array)
+(defun transpose-3d (array)
   (declare (optimize (speed 3)))
   (let ((result (make-array (reverse (array-dimensions array))
                             :element-type 'single-float)))
     (loop-array (result (i j k))
      (setf (aref result i j k)
            (aref array k j i)))
+    result))
+
+(serapeum:-> transpose-2d ((simple-array single-float 2))
+             (values (simple-array single-float 2) &optional))
+(defun transpose-2d (array)
+  (declare (optimize (speed 3)))
+  (let ((result (make-array (reverse (array-dimensions array))
+                            :element-type 'single-float)))
+    (loop-array (result (i j))
+     (setf (aref result i j)
+           (aref array j i)))
     result))
 
 ;; Linear interpolation

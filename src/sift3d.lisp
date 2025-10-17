@@ -253,7 +253,7 @@ descriptors."
                         ;; library accepts arrays in column-major
                         ;; order (but outputs normal row-major ordered
                         ;; arrays).
-                        (image            image (util:transpose array))
+                        (image            image (util:transpose-3d array))
                         (keypoint-store   keypoint-store)
                         (descriptor-store descriptor-store)
                         (matrix           matrix))
