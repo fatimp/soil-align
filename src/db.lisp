@@ -78,7 +78,8 @@
 (serapeum:-> descriptors-cached
              ((util:image (unsigned-byte 8)) pathname
               &optional (double-float 0d0 1d0))
-             (values (util:fixed-entries 3) (util:fixed-entries 768) &optional))
+             (values (util:fixed-entries #.util:+descriptor-offset+)
+                     (util:fixed-entries #.util:+descriptor-length+) &optional))
 (defun descriptors-cached (array db-pathname &optional (peak-threshold 1d-1))
   "Calculate image descriptors using 3D SIFT and cache them in a
 database. The next time the descriptors are calculated for this
@@ -101,9 +102,9 @@ the database."
         (if (and peak-threshold-cached (<= peak-threshold-cached peak-threshold))
             ;; Descriptors are in the database, decompress them from PCA space
             (let ((pca   (ub8-vector->floats pca   (list nsamples features)))
-                  (vt    (ub8-vector->floats vt    (list features 768)))
-                  (means (ub8-vector->floats means (list 768)))
-                  (coord (ub8-vector->floats coord (list nsamples 3))))
+                  (vt    (ub8-vector->floats vt    (list features util:+descriptor-length+)))
+                  (means (ub8-vector->floats means (list util:+descriptor-length+)))
+                  (coord (ub8-vector->floats coord (list nsamples util:+descriptor-offset+))))
               (let ((vt-matrix (magicl:make-tensor
                                     'magicl:matrix/single-float
                                     (array-dimensions vt)

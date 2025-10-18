@@ -22,6 +22,7 @@
 
 (defconstant +descriptor-offset+ 3)
 (defconstant +descriptor-length+ (- 771 +descriptor-offset+))
+
 (deftype image      (type) `(simple-array ,type 3))
 (deftype histograms (type) `(simple-array ,type (* * * 256)))
 (deftype fixed-entries (n) `(simple-array single-float (* ,n)))

@@ -111,7 +111,9 @@
              ((util:image (unsigned-byte 8))
               (double-float 0d0 1d0)
               (or pathname null))
-             (values (util:fixed-entries 3) (util:fixed-entries 768) &optional))
+             (values (util:fixed-entries #.util:+descriptor-offset+)
+                     (util:fixed-entries #.util:+descriptor-length+)
+                     &optional))
 (defun descriptors (array peak-threshold db-pathname)
   (if db-pathname
       (db:descriptors-cached array db-pathname peak-threshold)

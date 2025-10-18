@@ -14,8 +14,9 @@
    :storage (sb-ext:array-storage-vector storage)))
 
 ;; Here the array of descriptors is transposed
-(serapeum:-> mean-values ((simple-array single-float (768 *)))
-             (values (simple-array single-float (768)) &optional))
+(serapeum:-> mean-values
+             ((simple-array single-float (#.util:+descriptor-length+ *)))
+             (values (simple-array single-float (#.util:+descriptor-length+)) &optional))
 (defun mean-values (descriptors)
   (declare (optimize (speed 3)))
   (let ((result (make-array util:+descriptor-length+
@@ -31,8 +32,10 @@
                    samples)))
     result))
 
-(serapeum:-> fit-pca ((util:fixed-entries 768) (single-float 0.0 1.0))
-             (values magicl:matrix/single-float (simple-array single-float (768)) &optional))
+(serapeum:-> fit-pca
+             ((util:fixed-entries #.util:+descriptor-length+) (single-float 0.0 1.0))
+             (values magicl:matrix/single-float
+                     (simple-array single-float (#.util:+descriptor-length+)) &optional))
 (defun fit-pca (descriptors explained-variance)
   (declare (optimize (speed 3)))
   (let* ((transposed (util:transpose-2d descriptors))
@@ -45,7 +48,7 @@
         (magicl:svd (make-matrix transposed (array-dimensions descriptors))
                     :reduced t)
       (declare (ignore u))
-      (let* ((s (make-array 768
+      (let* ((s (make-array util:+descriptor-length+
                             :element-type 'single-float
                             :initial-contents (magicl:diag s)))
              
@@ -65,13 +68,13 @@
                                     cum-ratio :from-end t)
                                    0))))
         (values
-         (magicl:slice vt '(0 0) (list n-components 768))
+         (magicl:slice vt '(0 0) (list n-components util:+descriptor-length+))
          means)))))
 
 (serapeum:-> transform-pca
-             ((util:fixed-entries 768)
+             ((util:fixed-entries #.util:+descriptor-length+)
               magicl:matrix/single-float
-              (simple-array single-float (768)))
+              (simple-array single-float (#.util:+descriptor-length+)))
              (values (simple-array single-float (* *)) &optional))
 (defun transform-pca (descriptors vt means)
   (declare (optimize (speed 3)))
@@ -98,8 +101,8 @@
 (serapeum:-> invert-pca
              ((simple-array single-float (* *))
               magicl:matrix/single-float
-              (simple-array single-float (768)))
-             (values (util:fixed-entries 768) &optional))
+              (simple-array single-float (#.util:+descriptor-length+)))
+             (values (util:fixed-entries #.util:+descriptor-length+) &optional))
 (defun invert-pca (pca vt means)
   (declare (optimize (speed 3)))
   ;; Compute a transposed result to ease column-major to row-major
@@ -107,7 +110,7 @@
   (let* ((matrix   (make-matrix pca (reverse (array-dimensions pca))))
          (inverted (magicl:mult vt matrix :transa :t))
          (storage  (magicl::storage inverted))
-         (result   (make-array (list (array-dimension pca 0) 768)
+         (result   (make-array (list (array-dimension pca 0) util:+descriptor-length+)
                                :element-type 'single-float)))
     (declare (type (simple-array single-float (*)) storage))
     (assert (eq (magicl:layout inverted) :column-major))

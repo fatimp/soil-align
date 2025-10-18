@@ -239,8 +239,10 @@
     :from-end t
     :initial-value body)))
 
-(serapeum:-> split-coords ((util:fixed-entries 771))
-             (values (util:fixed-entries 3) (util:fixed-entries 768) &optional))
+(serapeum:-> split-coords
+             ((util:fixed-entries #.(+ util:+descriptor-offset+ util:+descriptor-length+)))
+             (values (util:fixed-entries #.util:+descriptor-offset+)
+                     (util:fixed-entries #.util:+descriptor-length+) &optional))
 (defun split-coords (array)
   (declare (optimize (speed 3)))
   (let* ((length (array-dimension array 0))
@@ -257,7 +259,8 @@
 
 ;; Now, high-level function for descriptor arrays
 (serapeum:-> descriptors ((util:image single-float) &optional (double-float 0d0 1d0))
-             (values (util:fixed-entries 3) (util:fixed-entries 768) &optional))
+             (values (util:fixed-entries #.util:+descriptor-offset+)
+                     (util:fixed-entries #.util:+descriptor-length+) &optional))
 (defun descriptors (array &optional (peak-threshold 1d-1))
   "Take an image (3D array of single-floats) and return an array of
 keypoint coordinates and their descriptors. The parameter
@@ -280,7 +283,7 @@ default results in a great number of unstable descriptors."
     (let ((n (cffi:foreign-slot-value matrix '(:struct matrix) 'nrows))
           (desc-length (cffi:foreign-slot-value matrix '(:struct matrix) 'ncols))
           (matrix-data (cffi:foreign-slot-value matrix '(:struct matrix) 'data)))
-      (unless (= desc-length 771)
+      (unless (= desc-length (+ util:+descriptor-offset+ util:+descriptor-length+))
         (error 'util:ffi-error :message "Got strange descriptors"))
       (let ((descriptors (make-array (list n desc-length) :element-type 'single-float)))
         ;; A descriptor is a vector of 771 single float elements.
