@@ -7,12 +7,6 @@
   (:export #:descriptors-cached))
 (in-package :soil-align/db)
 
-
-(defvar *means* nil)
-(defvar *vt* nil)
-(defvar *coords* nil)
-(defvar *pca* nil)
-
 (declaim (inline convert-to-simple-array))
 (defun convert-to-simple-array (sequence)
   (coerce sequence '(simple-array (unsigned-byte 8) (*))))
@@ -105,18 +99,7 @@ the database."
                   (vt    (ub8-vector->floats vt    (list features util:+descriptor-length+)))
                   (means (ub8-vector->floats means (list util:+descriptor-length+)))
                   (coord (ub8-vector->floats coord (list nsamples util:+descriptor-offset+))))
-              (let ((vt-matrix (magicl:make-tensor
-                                    'magicl:matrix/single-float
-                                    (array-dimensions vt)
-                                    :layout :row-major
-                                    :storage (sb-ext:array-storage-vector vt))))
-                (push vt-matrix *vt*)
-                (push pca *pca*)
-                (push means *means*)
-                (push coord *coords*)
-                (values
-                 coord
-                 (pca:invert-pca pca vt-matrix means))))
+                (values coord (pca:invert-pca pca vt means)))
             ;; else
             (util:rmvb (((coords descr)
                          (sift3d:descriptors (pre:clahe array) peak-threshold))
@@ -136,12 +119,7 @@ the database."
                    hash peak-threshold
                    (array-dimension pca 0) (array-dimension pca 1)
                    (floats->ub8-vector means)
-                   (floats->ub8-vector (magicl::storage vt))
+                   (floats->ub8-vector vt)
                    (floats->ub8-vector pca)
                    (floats->ub8-vector coords)))
-                (push vt *vt*)
-                (push pca *pca*)
-                (push coords *coords*)
-                (push means *means*)
-                (values coords
-                        (pca:invert-pca pca vt means)))))))))
+                (values coords (pca:invert-pca pca vt means)))))))))

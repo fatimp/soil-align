@@ -34,7 +34,7 @@
 
 (serapeum:-> fit-pca
              ((util:fixed-entries #.util:+descriptor-length+) (single-float 0.0 1.0))
-             (values magicl:matrix/single-float
+             (values (util:fixed-entries #.util:+descriptor-length+)
                      (simple-array single-float (#.util:+descriptor-length+)) &optional))
 (defun fit-pca (descriptors explained-variance)
   (declare (optimize (speed 3)))
@@ -66,14 +66,21 @@
              (n-components (1+ (or (position-if
                                     (lambda (x) (< x explained-variance))
                                     cum-ratio :from-end t)
-                                   0))))
-        (values
-         (magicl:slice vt '(0 0) (list n-components util:+descriptor-length+))
-         means)))))
+                                   0)))
+             (storage (magicl::storage vt))
+             (result (make-array (list n-components util:+descriptor-length+)
+                     :element-type 'single-float)))
+        ;; Do not use MAGICL:SLICE. It's incredibly slow.
+        (declare (type (simple-array single-float (*)) storage))
+        (assert (eq (magicl:layout vt) :row-major))
+        (util:loop-array (result (i j))
+          (setf (aref result i j)
+                (aref storage (+ (* i util:+descriptor-length+) j))))
+        (values result means)))))
 
 (serapeum:-> transform-pca
              ((util:fixed-entries #.util:+descriptor-length+)
-              magicl:matrix/single-float
+              (util:fixed-entries #.util:+descriptor-length+)
               (simple-array single-float (#.util:+descriptor-length+)))
              (values (simple-array single-float (* *)) &optional))
 (defun transform-pca (descriptors vt means)
@@ -84,6 +91,7 @@
         (setf (aref transposed i j)
               (- (aref transposed i j) mean))))
     (let* ((matrix (make-matrix transposed (array-dimensions descriptors)))
+           (vt (make-matrix vt (array-dimensions vt) :layout :row-major))
            ;; Compute a transposed result to ease column-major to row-major
            ;; conversion
            (transformed (magicl:mult vt matrix :transb :t))
@@ -100,7 +108,7 @@
 
 (serapeum:-> invert-pca
              ((simple-array single-float (* *))
-              magicl:matrix/single-float
+              (util:fixed-entries #.util:+descriptor-length+)
               (simple-array single-float (#.util:+descriptor-length+)))
              (values (util:fixed-entries #.util:+descriptor-length+) &optional))
 (defun invert-pca (pca vt means)
@@ -108,6 +116,7 @@
   ;; Compute a transposed result to ease column-major to row-major
   ;; conversion
   (let* ((matrix   (make-matrix pca (reverse (array-dimensions pca))))
+         (vt       (make-matrix vt (array-dimensions vt) :layout :row-major))
          (inverted (magicl:mult vt matrix :transa :t))
          (storage  (magicl::storage inverted))
          (result   (make-array (list (array-dimension pca 0) util:+descriptor-length+)
