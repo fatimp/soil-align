@@ -6,6 +6,13 @@
            #:invert-pca))
 (in-package :soil-align/pca)
 
+(declaim (inline make-matrix))
+(defun make-matrix (storage shape &key (layout :column-major))
+  (magicl:make-tensor
+   'magicl:matrix/single-float shape
+   :layout layout
+   :storage (sb-ext:array-storage-vector storage)))
+
 ;; Here the array of descriptors is transposed
 (serapeum:-> mean-values ((simple-array single-float (768 *)))
              (values (simple-array single-float (768)) &optional))
@@ -35,13 +42,8 @@
         (setf (aref transposed i j)
               (- (aref transposed i j) mean))))
     (multiple-value-bind (u s vt)
-        (magicl:svd
-         (magicl:make-tensor
-          'magicl:matrix/single-float
-          (array-dimensions descriptors)
-          :layout :column-major
-          :storage (sb-ext:array-storage-vector transposed))
-         :reduced t)
+        (magicl:svd (make-matrix transposed (array-dimensions descriptors))
+                    :reduced t)
       (declare (ignore u))
       (let* ((s (make-array 768
                             :element-type 'single-float
@@ -78,23 +80,20 @@
       (let ((mean (aref means i)))
         (setf (aref transposed i j)
               (- (aref transposed i j) mean))))
-    (let ((matrix (magicl:make-tensor
-                   'magicl:matrix/single-float
-                   (array-dimensions descriptors)
-                   :layout :column-major
-                   :storage (sb-ext:array-storage-vector transposed))))
-      ;; Compute a transposed result to ease column-major to row-major
-      ;; conversion
-      (let* ((transformed (magicl:mult vt matrix :transb :t))
-             ;; Convert back to an ordinary lisp array
-             (result (make-array (reverse (magicl:shape transformed))
-                                 :element-type 'single-float)))
-        (let ((tr (magicl::storage transformed)))
-          (declare (type (simple-array single-float) tr))
-          (loop for i below (array-total-size result) do
-                (setf (row-major-aref result i)
-                      (aref tr i))))
-        result))))
+    (let* ((matrix (make-matrix transposed (array-dimensions descriptors)))
+           ;; Compute a transposed result to ease column-major to row-major
+           ;; conversion
+           (transformed (magicl:mult vt matrix :transb :t))
+           ;; Convert back to an ordinary lisp array
+           (result (make-array (reverse (magicl:shape transformed))
+                               :element-type 'single-float))
+           (tr (magicl::storage transformed)))
+      (declare (type (simple-array single-float) tr))
+      (assert (eq (magicl:layout transformed) :column-major))
+      (loop for i below (array-total-size result) do
+            (setf (row-major-aref result i)
+                  (aref tr i)))
+      result)))
 
 (serapeum:-> invert-pca
              ((simple-array single-float (* *))
@@ -105,17 +104,15 @@
   (declare (optimize (speed 3)))
   ;; Compute a transposed result to ease column-major to row-major
   ;; conversion
-  (let* ((matrix (magicl:make-tensor
-                  'magicl:matrix/single-float
-                  (reverse (array-dimensions pca))
-                  :layout :column-major
-                  :storage (sb-ext:array-storage-vector pca)))
-         (inverted (magicl::storage (magicl:mult vt matrix :transa :t)))
-         (result (make-array (list (array-dimension pca 0) 768)
-                             :element-type 'single-float)))
-    (declare (type (simple-array single-float (*)) inverted))
+  (let* ((matrix   (make-matrix pca (reverse (array-dimensions pca))))
+         (inverted (magicl:mult vt matrix :transa :t))
+         (storage  (magicl::storage inverted))
+         (result   (make-array (list (array-dimension pca 0) 768)
+                               :element-type 'single-float)))
+    (declare (type (simple-array single-float (*)) storage))
+    (assert (eq (magicl:layout inverted) :column-major))
     (loop for i below (array-total-size result) do
-          (setf (row-major-aref result i) (aref inverted i)))
+          (setf (row-major-aref result i) (aref storage i)))
     (util:loop-array (result (i j))
       (incf (aref result i j) (aref means j)))
     result))
