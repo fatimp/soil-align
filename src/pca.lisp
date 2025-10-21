@@ -37,6 +37,9 @@
              (values (util:fixed-entries #.util:+descriptor-length+)
                      (simple-array single-float (#.util:+descriptor-length+)) &optional))
 (defun fit-pca (descriptors explained-variance)
+  "Return a matrix which projects vectors from the descriptor space to
+a PCA space of lesser dimensionality. The parameter
+@c(EXPLAINED-VARIANCE) controls dimensionality of that space."
   (declare (optimize (speed 3)))
   (let* ((transposed (util:transpose-2d descriptors))
          (means (mean-values transposed)))
@@ -51,7 +54,6 @@
       (let* ((s (make-array util:+descriptor-length+
                             :element-type 'single-float
                             :initial-contents (magicl:diag s)))
-             
              (samples (array-dimension descriptors 0))
              ;; explained variance
              (ev (map '(vector single-float)
@@ -84,6 +86,8 @@
               (simple-array single-float (#.util:+descriptor-length+)))
              (values (simple-array single-float (* *)) &optional))
 (defun transform-pca (descriptors vt means)
+  "Apply a transform to the PCA space to descriptors. @c(VT) and
+@c(MEANS) are obtained from @c(FIT-PCA)."
   (declare (optimize (speed 3)))
   (let ((transposed (util:transpose-2d descriptors)))
     (util:loop-array (transposed (i j))
@@ -98,12 +102,12 @@
            ;; Convert back to an ordinary lisp array
            (result (make-array (reverse (magicl:shape transformed))
                                :element-type 'single-float))
-           (tr (magicl::storage transformed)))
-      (declare (type (simple-array single-float) tr))
+           (storage (magicl::storage transformed)))
+      (declare (type (simple-array single-float) storage))
       (assert (eq (magicl:layout transformed) :column-major))
       (loop for i below (array-total-size result) do
             (setf (row-major-aref result i)
-                  (aref tr i)))
+                  (aref storage i)))
       result)))
 
 (serapeum:-> invert-pca
@@ -112,6 +116,8 @@
               (simple-array single-float (#.util:+descriptor-length+)))
              (values (util:fixed-entries #.util:+descriptor-length+) &optional))
 (defun invert-pca (pca vt means)
+  "This is a (lossy) inversion of @c(TRANSFORM-PCA), i.e. it convects
+vectors in the PCA space back into the descriptor space."
   (declare (optimize (speed 3)))
   ;; Compute a transposed result to ease column-major to row-major
   ;; conversion

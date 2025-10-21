@@ -1,5 +1,13 @@
 # Changelog
 
+## Version 0.3
+
+* Improvement: Apply PCA analysis to descriptors in order to save space in the
+  database.
+* Incompatible change: Bruteforce matching of descriptors was removed.
+* Incompatible change: Another database format. You must to manually remove
+  older database file(s).
+
 ## Version 0.2
 
 * Incompatible change: the output image is stored as an array of octets

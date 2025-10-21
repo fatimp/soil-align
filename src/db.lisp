@@ -81,8 +81,8 @@ particular array the results are read from the database. The database
 uses SHA256 hash of the array as a key into the database. Unlike
 @c(SOIL-ALIGN/SIFT3D:DESCRIPTORS) function, this function accepts an
 (original) array of octets which is later converted to an array of
-single floats using @c(PREPROCESS). @c(DB-PATHNAME) argument is a path to
-the database."
+single floats using CLAHE algorithm. @c(DB-PATHNAME) argument is a
+path to the database."
   (let ((hash (image-hash array)))
     (ensure-directories-exist db-pathname)
     (sqlite:with-open-database (db (uiop:native-namestring db-pathname))

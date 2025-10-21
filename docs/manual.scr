@@ -44,7 +44,7 @@
    Утилита командной строки имеет следующий интерфейс (выводится при запуске без
    аргументов):
    @begin(code)
-Usage: soil-align [-v|--verbose] [--bruteforce] [--no-db] [-t|--threads N]
+Usage: soil-align [-v|--verbose] [--no-db] [-t|--threads N]
                   [-w|--workspace-side S] [-m|--matrix m.npy]
                   [-o|--image out.npy] [--min-dog P] [--dist-ratio C]
                   [--fit-error E] [--min-inliers N]
@@ -60,7 +60,6 @@ Description of flags and options
 -w|--workspace-side S     Side of a workspace which is cut from center of the input images
 -t|--threads N            Number of threads to use
 --no-db                   Do not cache image descriptors in the database
---bruteforce              Use bruteforce matching of keypoints instead of pynndescent
 -v|--verbose              Be verbose
    @end(code)
 
@@ -112,18 +111,20 @@ Description of flags and options
     @cl:doc(function descriptors)
   )
 
+  Пакет @c(soil-align/pca):
+  @cl:with-package[name="soil-align/pca"](
+    @cl:doc(function fit-pca)
+    @cl:doc(function transform-pca)
+    @cl:doc(function invert-pca)
+  )
+
   Пакет @c(soil-align/db):
   @cl:with-package[name="soil-align/db"](
     @cl:doc(function descriptors-cached)
   )
 
-  Пакет @c(soil-align/matches-bruteforce):
-  @cl:with-package[name="soil-align/matches-bruteforce"](
-    @cl:doc(function match-descriptors)
-  )
-
-  Пакет @c(soil-align/matches-pynndescent):
-  @cl:with-package[name="soil-align/matches-pynndescent"](
+  Пакет @c(soil-align/match):
+  @cl:with-package[name="soil-align/match"](
     @cl:doc(function match-descriptors)
   )
 
