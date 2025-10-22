@@ -1,5 +1,5 @@
 (defpackage soil-align/util
-  (:use #:cl)
+  (:use #:cl #:climp)
   (:export #:loop-array
            #:loop-ranges
            #:rmvb
@@ -28,14 +28,20 @@
 (deftype fixed-entries (n) `(simple-array single-float (* ,n)))
 
 ;; Useful macros for iteration which supersede nested loops
-(defmacro loop-array ((array indices) &body body)
+(defmacro loop-array ((array indices &key nthreads) &body body)
   (car
    (reduce
     (lambda (entry acc)
       (destructuring-bind (d . idx)
           entry
-        `((loop for ,idx below (array-dimension ,array ,d) do
-                ,@acc))))
+        (if (and nthreads (eq idx (car indices)))
+            `((parallel-dotimes (,idx (array-dimension ,array ,d)
+                                      :number-of-threads ,nthreads)
+                (declare (type fixnum ,idx))
+                ,@acc))
+            `((dotimes (,idx (array-dimension ,array ,d))
+                (declare (type fixnum ,idx))
+                ,@acc)))))
     (loop for idx in indices
           for d from 0 by 1
           collect (cons d idx))

@@ -224,7 +224,7 @@
                         ;; Load a bigger image once more
                         (numpy-npy:load-array (%assoc :source args))
                         source)
-                    matrix))
+                    matrix :nthreads nthreads))
                   "Computed a transformed image")
                  trans-image))
               (log:info "Summary: ~d/~d descriptors, ~d matches, ~d inliers, ~f fit error"

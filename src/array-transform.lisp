@@ -16,13 +16,15 @@
     (values x y z)))
 
 (serapeum:-> apply-transform
-             ((util:image (unsigned-byte 8)) tran:affine-transform)
+             ((util:image (unsigned-byte 8))
+              tran:affine-transform
+              &key (:nthreads alexandria:positive-fixnum))
              (values (util:image (unsigned-byte 8)) &optional))
-(defun apply-transform (array m)
+(defun apply-transform (array m &key (nthreads 1))
   "Apply affine transform @c(M) (in the form of 4x4 matrix) to an image."
   (declare (optimize (speed 3)))
   (let ((result (make-array (array-dimensions array) :element-type '(unsigned-byte 8))))
-    (util:loop-array (result (i j k))
+    (util:loop-array (result (i j k) :nthreads nthreads)
       (multiple-value-bind (x y z)
           (apply-transform-xs m (float i) (float j) (float k))
         (setf (aref result i j k)

@@ -25,6 +25,7 @@
                :ironclad
                :sqlite
                :vector-sum
+               :climp
                (:feature :freebsd :freebsd-sysctl)
                :soil-align/pynndescent-so
                :soil-align/util
