@@ -1,0 +1,14 @@
+ql serapeum
+ql alexandria
+ql float-features
+ql cffi
+ql log4cl
+ql parse-float
+ultralisp shamazmazum-command-line-parse
+ultralisp shamazmazum-numpy-npy
+ql nibbles
+ql ironclad
+ql cl-sqlite
+ultralisp shamazmazum-vector-sum
+github shamazmazum/magicl :tag kinda-stable
+github sviridov/climp

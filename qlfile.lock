@@ -1,0 +1,60 @@
+("quicklisp" .
+ (:class qlot/source/dist:source-dist
+  :initargs (:distribution "https://beta.quicklisp.org/dist/quicklisp.txt" :%version :latest)
+  :version "2025-06-22"))
+("serapeum" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2025-06-22"))
+("alexandria" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2024-10-12"))
+("float-features" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2025-06-22"))
+("cffi" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2025-06-22"))
+("log4cl" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2023-06-18"))
+("parse-float" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2020-02-18"))
+("shamazmazum-command-line-parse" .
+ (:class qlot/source/ultralisp:source-ultralisp
+  :initargs (:%version :latest)
+  :version "ultralisp-20251022062000"))
+("shamazmazum-numpy-npy" .
+ (:class qlot/source/ultralisp:source-ultralisp
+  :initargs (:%version :latest)
+  :version "ultralisp-20251022062000"))
+("nibbles" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2025-06-22"))
+("ironclad" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2024-10-12"))
+("cl-sqlite" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2019-08-13"))
+("shamazmazum-vector-sum" .
+ (:class qlot/source/ultralisp:source-ultralisp
+  :initargs (:%version :latest)
+  :version "ultralisp-20251022062000"))
+("magicl" .
+ (:class qlot/source/github:source-github
+  :initargs (:repos "shamazmazum/magicl" :ref nil :branch nil :tag "kinda-stable")
+  :version "github-82f4e19cd299116deeb4685a93c72227543be829"))
+("climp" .
+ (:class qlot/source/github:source-github
+  :initargs (:repos "sviridov/climp" :ref nil :branch nil :tag nil)
+  :version "github-82d65eb63c43c277428a86ca324c091efe2b7f90"))
