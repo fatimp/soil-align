@@ -1,5 +1,11 @@
 # Changelog
 
+## Version 0.4
+
+* Incompatible change: The default parameter of `match-descriptors` is changed
+  to `1.2`.
+* Improvement: `apply-transform` is parallelized.
+
 ## Version 0.3
 
 * Improvement: Apply PCA analysis to descriptors in order to save space in the
