@@ -87,7 +87,7 @@
                                 (util:fixed-entries #.util:+descriptor-length+)
                                 &optional (single-float 0.0))
              (values list &optional))
-(defun match-descriptors (c1 c2 d1 d2 &optional (c 1.3))
+(defun match-descriptors (c1 c2 d1 d2 &optional (c 1.2))
   "Find matches between two sets of descriptors. The parameter @c(C)
 controls what we treat as a match. Bigger values result in a lesser
 number of more stable matches. \\(C_i\\) is an array of keypoint

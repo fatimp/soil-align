@@ -164,7 +164,7 @@
   (let* ((args (parse-argv *parser*))
          (min-dog (float (%assoc :min-dog           args 0.1) 0d0))
          (min-inliers    (%assoc :min-inliers       args 0.6))
-         (dist-ratio     (%assoc :dist-ratio        args 1.3))
+         (dist-ratio     (%assoc :dist-ratio        args 1.2))
          (fit-error      (%assoc :fit-error         args 100.0))
          (trans-image    (%assoc :transformed-image args))
          (trans-matrix   (%assoc :transform-matrix  args))
