@@ -197,41 +197,41 @@
                     ((ref-kp ref-desc)
                      (log-eval
                       ((descriptors reference min-dog db-pathname) 2)
-                      "Got descriptors of the reference image")))
-          (let ((matches
-                 (log-eval
-                  ((match:match-descriptors
-                    (add-offsets! rx ry rz ref-kp)
-                    (add-offsets! sx sy sz source-kp)
-                    ref-desc source-desc dist-ratio))
-                  "Found matches between images")))
-            (multiple-value-bind (matrix error inliers)
-                (trans:affine-transform matches
-                                        :min-inliers min-inliers
-                                        :max-iter    2000
-                                        :err         fit-error)
-              (log:info "Found a transform matrix")
-              (unless matrix
-                (log:error "Consensus is not achieved")
-                (uiop:quit 0))
-              (when trans-matrix
-                (numpy-npy:store-array matrix trans-matrix))
-              (when trans-image
-                (io:write-image
-                 (log-eval
-                  ((atrans:apply-transform
-                    (if workspace-side
-                        ;; Load a bigger image once more
-                        (numpy-npy:load-array (%assoc :source args))
-                        source)
-                    matrix :nthreads nthreads))
-                  "Computed a transformed image")
-                 trans-image))
-              (log:info "Summary: ~d/~d descriptors, ~d matches, ~d inliers, ~f fit error"
-                        (array-dimension source-kp 0)
-                        (array-dimension ref-kp 0)
-                        (length matches)
-                        inliers error))))))))
+                      "Got descriptors of the reference image"))
+                    ((matches)
+                     (match:match-descriptors
+                      (add-offsets! rx ry rz ref-kp)
+                      (add-offsets! sx sy sz source-kp)
+                      ref-desc source-desc dist-ratio)))
+          (log:info "Found ~d matches between images"
+                    (length matches))
+          (multiple-value-bind (matrix error inliers)
+              (trans:affine-transform matches
+                                      :min-inliers min-inliers
+                                      :max-iter    2000
+                                      :err         fit-error)
+            (log:info "Found a transform matrix")
+            (unless matrix
+              (log:error "Consensus is not achieved")
+              (uiop:quit 0))
+            (when trans-matrix
+              (numpy-npy:store-array matrix trans-matrix))
+            (when trans-image
+              (io:write-image
+               (log-eval
+                ((atrans:apply-transform
+                  (if workspace-side
+                      ;; Load a bigger image once more
+                      (numpy-npy:load-array (%assoc :source args))
+                      source)
+                  matrix :nthreads nthreads))
+                "Computed a transformed image")
+               trans-image))
+            (log:info "Summary: ~d/~d descriptors, ~d matches, ~d inliers, ~f fit error"
+                      (array-dimension source-kp 0)
+                      (array-dimension ref-kp 0)
+                      (length matches)
+                      inliers error)))))))
 
 (deftype foreign-user-input-error () '(or cmd-line-parse-error))
 
