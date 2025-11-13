@@ -101,25 +101,35 @@ path to the database."
                   (coord (ub8-vector->floats coord (list nsamples util:+descriptor-offset+))))
                 (values coord (pca:invert-pca pca vt means)))
             ;; else
-            (util:rmvb (((coords descr)
-                         (sift3d:descriptors (pre:clahe array) peak-threshold))
-                        ((vt means)
-                         (pca:fit-pca descr 0.95)))
-              (let ((pca (pca:transform-pca descr vt means)))
-                (sqlite:with-transaction db
-                  ;; Drop all stale entries
-                  (sqlite:execute-non-query
-                   db "delete from descriptors where sha256 = ?" hash)
-                  (sqlite:execute-non-query
-                   db #.(concatenate 'string
-                                     "insert into descriptors "
-                                     "(sha256, mindog, nsamples, features, "
-                                     "means, vt, pca, coord) "
-                                     "values (?, ?, ?, ?, ?, ?, ?, ?)")
-                   hash peak-threshold
-                   (array-dimension pca 0) (array-dimension pca 1)
-                   (floats->ub8-vector means)
-                   (floats->ub8-vector vt)
-                   (floats->ub8-vector pca)
-                   (floats->ub8-vector coords)))
-                (values coords (pca:invert-pca pca vt means)))))))))
+            (multiple-value-bind (coords descr)
+                (sift3d:descriptors (pre:clahe array) peak-threshold)
+              (if (< (array-dimension descr 0)
+                     (array-dimension descr 1))
+                  (progn
+                    (log:warn
+                     #.(concatenate
+                        'string
+                        "Number of samples is too low, refusing to do PCA. "
+                        "As a current limitation, descriptors will not be stored in the "
+                        "database."))
+                    (values coords descr))
+                  (multiple-value-bind (vt means)
+                      (pca:fit-pca descr 0.95)
+                    (let ((pca (pca:transform-pca descr vt means)))
+                      (sqlite:with-transaction db
+                        ;; Drop all stale entries
+                        (sqlite:execute-non-query
+                         db "delete from descriptors where sha256 = ?" hash)
+                        (sqlite:execute-non-query
+                         db #.(concatenate 'string
+                                           "insert into descriptors "
+                                           "(sha256, mindog, nsamples, features, "
+                                           "means, vt, pca, coord) "
+                                           "values (?, ?, ?, ?, ?, ?, ?, ?)")
+                         hash peak-threshold
+                         (array-dimension pca 0) (array-dimension pca 1)
+                         (floats->ub8-vector means)
+                         (floats->ub8-vector vt)
+                         (floats->ub8-vector pca)
+                         (floats->ub8-vector coords)))
+                      (values coords (pca:invert-pca pca vt means)))))))))))

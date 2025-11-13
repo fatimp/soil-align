@@ -41,6 +41,9 @@
 a PCA space of lesser dimensionality. The parameter
 @c(EXPLAINED-VARIANCE) controls dimensionality of that space."
   (declare (optimize (speed 3)))
+  ;; # samples >= # features
+  (assert (>= (array-dimension descriptors 0)
+              (array-dimension descriptors 1)))
   (let* ((transposed (util:transpose-2d descriptors))
          (means (mean-values transposed)))
     (util:loop-array (transposed (i j))
