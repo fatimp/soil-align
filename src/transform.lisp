@@ -106,6 +106,7 @@
 (defun random-integers (k n)
   "Collect K random integer from 0 (inclusive) to N (exclusive)
 without repetitions."
+  (assert (>= n k))
   (labels ((%go (acc k)
              (if (zerop k) acc
                  (let ((x (random n)))
@@ -174,7 +175,10 @@ previous step."
                      (if successp
                          (%go fit %err %inliers n)
                          (%go best-fit best-err inliers n)))))))
-    (%go nil ff:single-float-positive-infinity min-inliers max-iter)))
+    (let ((initial-error ff:single-float-positive-infinity))
+      (if (< (car (magicl:shape xs)) k)
+          (values nil initial-error min-inliers)
+          (%go    nil initial-error min-inliers max-iter)))))
 
 (serapeum:-> matrix->array (magicl:matrix/single-float)
              (values affine-transform &optional))
