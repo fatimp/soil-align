@@ -133,8 +133,8 @@
              (alexandria:non-negative-fixnum
               alexandria:non-negative-fixnum
               alexandria:non-negative-fixnum
-              (util:fixed-entries 3))
-             (values (util:fixed-entries 3) &optional))
+              (util:fixed-entries #.util:+descriptor-offset+))
+             (values (util:fixed-entries #.util:+descriptor-offset+) &optional))
 (defun add-offsets! (off-x off-y off-z keypoints)
   (declare (optimize (speed 3)))
   (unless (= off-x off-y off-z 0)
