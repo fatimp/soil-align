@@ -15,6 +15,7 @@
            #:generic-error
            #:internal-error
            #:ffi-error
+           #:db-error
            #:user-input-error
            #:io-error))
 (in-package :soil-align/util)
@@ -155,7 +156,8 @@
 
 ;; Where else to put this?
 (define-condition generic-error (error)
-  ()
+  ((message :reader  error-message
+            :initarg :message))
   (:documentation "Generic error which is explicitly signaled from soil-align"))
 
 (define-condition internal-error (generic-error)
@@ -163,19 +165,21 @@
   (:documentation "Error which is not in any way related to the user input"))
 
 (define-condition ffi-error (internal-error)
-  ((message :reader  error-message
-            :initarg :message))
+  ()
   (:report (lambda (c s)
              (format s "FFI error: ~a" (error-message c)))))
 
+(define-condition db-error (internal-error)
+  ()
+  (:report (lambda (c s)
+             (format s "DB error: ~a" (error-message c)))))
+
 (define-condition user-input-error (generic-error)
-  ((message :reader  error-message
-            :initarg :message))
+  ()
   (:report (lambda (c s)
              (format s "User input error: ~a" (error-message c)))))
 
 (define-condition io-error (generic-error)
-  ((message :reader  error-message
-            :initarg :message))
+  ()
   (:report (lambda (c s)
              (format s "I/O error: ~a" (error-message c)))))

@@ -73,7 +73,10 @@
              ((util:image (unsigned-byte 8)) pathname
               &optional (double-float 0d0 1d0))
              (values (util:fixed-entries #.util:+descriptor-offset+)
-                     (util:fixed-entries #.util:+descriptor-length+) &optional))
+                     (util:fixed-entries *)
+                     (util:fixed-entries #.util:+descriptor-length+)
+                     (simple-array single-float (#.util:+descriptor-length+))
+                     &optional))
 (defun descriptors-cached (array db-pathname &optional (peak-threshold 1d-1))
   "Calculate image descriptors using 3D SIFT and cache them in a
 database. The next time the descriptors are calculated for this
@@ -82,7 +85,11 @@ uses SHA256 hash of the array as a key into the database. Unlike
 @c(SOIL-ALIGN/SIFT3D:DESCRIPTORS) function, this function accepts an
 (original) array of octets which is later converted to an array of
 single floats using CLAHE algorithm. @c(DB-PATHNAME) argument is a
-path to the database."
+path to the database.
+
+Return three values: Coordinates of keypoints, descriptors in the PCA
+space, a transform from the descriptor space to the PCA space,
+descriptor components means."
   (let ((hash (image-hash array)))
     (ensure-directories-exist db-pathname)
     (sqlite:with-open-database (db (uiop:native-namestring db-pathname))
@@ -99,20 +106,13 @@ path to the database."
                   (vt    (ub8-vector->floats vt    (list features util:+descriptor-length+)))
                   (means (ub8-vector->floats means (list util:+descriptor-length+)))
                   (coord (ub8-vector->floats coord (list nsamples util:+descriptor-offset+))))
-                (values coord (pca:invert-pca pca vt means)))
+                (values coord pca vt means))
             ;; else
             (multiple-value-bind (coords descr)
                 (sift3d:descriptors (pre:clahe array) peak-threshold)
               (if (< (array-dimension descr 0)
                      (array-dimension descr 1))
-                  (progn
-                    (log:warn
-                     #.(concatenate
-                        'string
-                        "Number of samples is too low, refusing to do PCA. "
-                        "As a current limitation, descriptors will not be stored in the "
-                        "database."))
-                    (values coords descr))
+                  (error 'util:db-error :message "Too small number of feature points")
                   (multiple-value-bind (vt means)
                       (pca:fit-pca descr 0.95)
                     (let ((pca (pca:transform-pca descr vt means)))
@@ -132,4 +132,4 @@ path to the database."
                          (floats->ub8-vector vt)
                          (floats->ub8-vector pca)
                          (floats->ub8-vector coords)))
-                      (values coords (pca:invert-pca pca vt means)))))))))))
+                      (values coords pca vt means))))))))))
