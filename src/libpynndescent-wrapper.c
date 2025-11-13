@@ -5,8 +5,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define DESCRIPTOR_LEN 768
-
 struct python_state {
     int initialized;
     PyObject *pynndescent;
@@ -57,8 +55,10 @@ void nndescent_deinitialize () {
 
 void nndescent_find_closest (float *set1, size_t len1,
                              float *set2, size_t len2,
+                             size_t nfeatures,
                              void (*callback) (const float *dists,
-                                               const float *indices, size_t len)) {
+                                               const int   *indices,
+                                               size_t       len)) {
     PyObject *set1_numpy   = NULL;
     PyObject *set2_numpy   = NULL;
     PyObject *graph        = NULL;
@@ -70,7 +70,7 @@ void nndescent_find_closest (float *set1, size_t len1,
         return;
     }
 
-    npy_intp dims1[2] = { len1, DESCRIPTOR_LEN };
+    npy_intp dims1[2] = { len1, nfeatures };
     set1_numpy = PyArray_SimpleNewFromData (2, dims1, NPY_FLOAT, set1);
     if (set1_numpy == NULL) {
         fprintf(stderr, "Failed to create a numpy array\n");
@@ -78,7 +78,7 @@ void nndescent_find_closest (float *set1, size_t len1,
         goto cleanup;
     }
 
-    npy_intp dims2[2] = { len2, DESCRIPTOR_LEN };
+    npy_intp dims2[2] = { len2, nfeatures };
     set2_numpy = PyArray_SimpleNewFromData (2, dims2, NPY_FLOAT, set2);
     if (set2_numpy == NULL) {
         fprintf(stderr, "Failed to create a numpy array\n");
