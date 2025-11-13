@@ -179,8 +179,8 @@
       (error 'util:user-input-error :message "No output selected"))
     (log:config (if (%assoc :verbose args) :info :warn))
     (log:config :daily +log-pathname+ :backup nil)
-    (util:rmvb (((source    sx sy sz) (load-and-maybe-cut source    workspace-side))
-                ((reference rx ry rz) (load-and-maybe-cut reference workspace-side)))
+    (serapeum:mvlet ((source    sx sy sz (load-and-maybe-cut source    workspace-side))
+                     (reference rx ry rz (load-and-maybe-cut reference workspace-side)))
       ;; Run a full GC because uncut arrays may be really big, we need
       ;; to collect them now because later we will run foreign code
       ;; which allocates a lot.
@@ -190,19 +190,19 @@
         (log:info "Will use ~d threads" nthreads)
         (sift3d:set-num-threads nthreads))
       (with-pynndescent
-        (util:rmvb (((source-kp source-desc)
-                     (log-eval
-                      ((descriptors source min-dog db-pathname) 2)
-                      "Got descriptors of the source image"))
-                    ((ref-kp ref-desc)
-                     (log-eval
-                      ((descriptors reference min-dog db-pathname) 2)
-                      "Got descriptors of the reference image"))
-                    ((matches)
-                     (match:match-descriptors
-                      (add-offsets! rx ry rz ref-kp)
-                      (add-offsets! sx sy sz source-kp)
-                      ref-desc source-desc dist-ratio)))
+        (serapeum:mvlet* ((source-kp source-desc
+                                     (log-eval
+                                      ((descriptors source min-dog db-pathname) 2)
+                                      "Got descriptors of the source image"))
+                          (ref-kp ref-desc
+                                  (log-eval
+                                   ((descriptors reference min-dog db-pathname) 2)
+                                   "Got descriptors of the reference image"))
+                          (matches
+                           (match:match-descriptors
+                            (add-offsets! rx ry rz ref-kp)
+                            (add-offsets! sx sy sz source-kp)
+                            ref-desc source-desc dist-ratio)))
           (log:info "Found ~d matches between images"
                     (length matches))
           (multiple-value-bind (matrix error inliers)

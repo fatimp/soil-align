@@ -2,7 +2,6 @@
   (:use #:cl #:climp)
   (:export #:loop-array
            #:loop-ranges
-           #:rmvb
            #:image
            #:histograms
            #:descriptor
@@ -60,20 +59,6 @@
     :from-end t
     :initial-value body)))
 
-;; Really multiple value bind
-(defmacro rmvb (forms &body body)
-  (car
-   (reduce
-    (lambda (form acc)
-      (destructuring-bind (variables expression)
-          form
-        `((multiple-value-bind ,variables
-              ,expression
-            ,@acc))))
-    forms
-    :from-end t
-    :initial-value body)))
-
 (serapeum:-> transpose-3d ((image single-float))
              (values (image single-float) &optional))
 (defun transpose-3d (array)
@@ -114,10 +99,10 @@
   (let ((divisor-x (float divisor-x))
         (divisor-y (float divisor-y))
         (divisor-z (float divisor-z)))
-    (rmvb (((qi ri) (floor x divisor-x))
-           ((qj rj) (floor y divisor-y))
-           ((qk rk) (floor z divisor-z)))
-            ;; For code formatting
+    (serapeum:mvlet ((qi ri (floor x divisor-x))
+                     (qj rj (floor y divisor-y))
+                     (qk rk (floor z divisor-z)))
+      ;; For code formatting
       (flet ((id (x) x))
         (declare (inline id))
         (let* ((ri (/ ri divisor-x))
