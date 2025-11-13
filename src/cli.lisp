@@ -5,7 +5,7 @@
                     (#:sift3d #:soil-align/sift3d)
                     (#:db     #:soil-align/db)
                     (#:io     #:soil-align/io)
-                    (#:pre    #:soil-align/preprocessing)
+                    (#:pca    #:soil-align/pca)
                     (#:trans  #:soil-align/transform)
                     (#:atrans #:soil-align/array-transform))
   (:export #:main))
@@ -52,9 +52,6 @@
             :short       #\v
             :long        "verbose"
             :description "Be verbose")
-    (flag   :no-db
-            :long        "no-db"
-            :description "Do not cache image descriptors in the database")
     (option :nthreads    "N"
             :long        "threads"
             :short       #\t
@@ -105,19 +102,6 @@
     `(multiple-value-bind ,variables ,computation
        (log:info ,@args)
        (values ,@variables))))
-
-(declaim (inline))
-(serapeum:-> descriptors
-             ((util:image (unsigned-byte 8))
-              (double-float 0d0 1d0)
-              (or pathname null))
-             (values (util:fixed-entries #.util:+descriptor-offset+)
-                     (util:fixed-entries #.util:+descriptor-length+)
-                     &optional))
-(defun descriptors (array peak-threshold db-pathname)
-  (if db-pathname
-      (db:descriptors-cached array db-pathname peak-threshold)
-      (sift3d:descriptors (pre:clahe array) peak-threshold)))
 
 (declaim (inline default-thread-number))
 (defun default-thread-number ()
@@ -170,11 +154,10 @@
          (trans-matrix   (%assoc :transform-matrix  args))
          (reference      (%assoc :reference         args))
          (source         (%assoc :source            args))
-         (no-db-p        (%assoc :no-db             args))
          (workspace-side (%assoc :workspace-side    args))
          ;; Do not evaluate default here
          (nthreads       (%assoc :nthreads          args))
-         (db-pathname (if (not no-db-p) (get-db-pathname))))
+         (db-pathname (get-db-pathname)))
     (unless (or trans-image trans-matrix)
       (error 'util:user-input-error :message "No output selected"))
     (log:config (if (%assoc :verbose args) :info :warn))
@@ -190,48 +173,54 @@
         (log:info "Will use ~d threads" nthreads)
         (sift3d:set-num-threads nthreads))
       (with-pynndescent
-        (serapeum:mvlet* ((source-kp source-desc
-                                     (log-eval
-                                      ((descriptors source min-dog db-pathname) 2)
-                                      "Got descriptors of the source image"))
-                          (ref-kp ref-desc
-                                  (log-eval
-                                   ((descriptors reference min-dog db-pathname) 2)
-                                   "Got descriptors of the reference image"))
-                          (matches
-                           (match:match-descriptors
-                            (add-offsets! rx ry rz ref-kp)
-                            (add-offsets! sx sy sz source-kp)
-                            ref-desc source-desc dist-ratio)))
-          (log:info "Found ~d matches between images"
-                    (length matches))
-          (multiple-value-bind (matrix error inliers)
-              (trans:affine-transform matches
-                                      :min-inliers min-inliers
-                                      :max-iter    2000
-                                      :err         fit-error)
-            (log:info "Found a transform matrix")
-            (unless matrix
-              (log:error "Consensus is not achieved")
-              (uiop:quit 0))
-            (when trans-matrix
-              (numpy-npy:store-array matrix trans-matrix))
-            (when trans-image
-              (io:write-image
-               (log-eval
-                ((atrans:apply-transform
-                  (if workspace-side
-                      ;; Load a bigger image once more
-                      (numpy-npy:load-array (%assoc :source args))
-                      source)
-                  matrix :nthreads nthreads))
-                "Computed a transformed image")
-               trans-image))
-            (log:info "Summary: ~d/~d descriptors, ~d matches, ~d inliers, ~f fit error"
-                      (array-dimension source-kp 0)
-                      (array-dimension ref-kp 0)
-                      (length matches)
-                      inliers error)))))))
+        (serapeum:mvlet ((source-kp source-desc-pca source-vt source-means
+                                    (log-eval
+                                     ((db:descriptors-cached source db-pathname min-dog) 4)
+                                     "Got descriptors of the source image"))
+                         (ref-kp ref-desc-pca ref-vt ref-means
+                                 (log-eval
+                                  ((db:descriptors-cached reference db-pathname min-dog) 4)
+                                  "Got descriptors of the reference image")))
+          ;; Convert descriptors in ref PCA space
+          (let* ((ref-desc ref-desc-pca)
+                 (source-desc (pca:transform-pca
+                               (pca:invert-pca source-desc-pca source-vt source-means)
+                               ref-vt ref-means))
+                 ;; Find matches between descriptors
+                 (matches
+                  (match:match-descriptors
+                   (add-offsets! rx ry rz ref-kp)
+                   (add-offsets! sx sy sz source-kp)
+                   ref-desc source-desc dist-ratio)))
+            (log:info "Found ~d matches between images"
+                      (length matches))
+            (multiple-value-bind (matrix error inliers)
+                (trans:affine-transform matches
+                                        :min-inliers min-inliers
+                                        :max-iter    2000
+                                        :err         fit-error)
+              (unless matrix
+                (log:error "Consensus is not achieved")
+                (uiop:quit 0))
+              (log:info "Found a transform matrix")
+              (when trans-matrix
+                (numpy-npy:store-array matrix trans-matrix))
+              (when trans-image
+                (io:write-image
+                 (log-eval
+                  ((atrans:apply-transform
+                    (if workspace-side
+                        ;; Load a bigger image once more
+                        (numpy-npy:load-array (%assoc :source args))
+                        source)
+                    matrix :nthreads nthreads))
+                  "Computed a transformed image")
+                 trans-image))
+              (log:info "Summary: ~d/~d descriptors, ~d matches, ~d inliers, ~f fit error"
+                        (array-dimension source-kp 0)
+                        (array-dimension ref-kp 0)
+                        (length matches)
+                        inliers error))))))))
 
 (deftype foreign-user-input-error () '(or cmd-line-parse-error))
 
