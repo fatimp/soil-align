@@ -192,14 +192,17 @@
                    (add-offsets! rx ry rz ref-kp)
                    (add-offsets! sx sy sz source-kp)
                    ref-desc source-desc dist-ratio)))
-            (log:info "Found ~d matches between images"
-                      (length matches))
+            (log:info "Found matches between images")
             (multiple-value-bind (matrix error inliers)
                 (trans:affine-transform matches
                                         :min-inliers min-inliers
                                         :max-iter    2000
                                         :err         fit-error)
               (unless matrix
+                (log:info "Summary: ~d/~d descriptors, ~d matches"
+                          (array-dimension source-kp 0)
+                          (array-dimension ref-kp 0)
+                          (length matches))
                 (log:error "Consensus is not achieved")
                 (uiop:quit 0))
               (log:info "Found a transform matrix")
