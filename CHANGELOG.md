@@ -1,5 +1,14 @@
 # Changelog
 
+## Version 0.5
+
+* Improvement: Search for matches in the PCA space of the reference image which
+  is of lower dimensionality than the descriptor space.
+* Bug fix: Produce a comprehensible error if the number of descriptors is too
+  small.
+* Bug fix: Avoid an infinite loop if the number of matches is less then a
+  minimal number of matches to find a transform matrix.
+
 ## Version 0.4
 
 * Incompatible change: The default parameter of `match-descriptors` is changed
