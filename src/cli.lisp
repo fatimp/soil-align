@@ -3,7 +3,7 @@
   (:local-nicknames (#:match  #:soil-align/match)
                     (#:util   #:soil-align/util)
                     (#:sift3d #:soil-align/sift3d)
-                    (#:db     #:soil-align/db)
+                    (#:cache  #:soil-align/cache)
                     (#:io     #:soil-align/io)
                     (#:pca    #:soil-align/pca)
                     (#:trans  #:soil-align/transform)
@@ -11,9 +11,9 @@
   (:export #:main))
 (in-package :soil-align/cli)
 
-(alexandria:define-constant +db-pathname+
+(alexandria:define-constant +cache-pathname+
     #+unix
-    #p"~/.local/share/soil-align/descriptors.sqlite"
+    #p"~/.cache/soil-align/"
     #-unix
     (error "I don't know a suitable location where I can store the database.")
   :documentation "Path where the cache is stored"
@@ -27,11 +27,12 @@
   :documentation "Path where the log is stored"
   :test #'equalp)
 
-(serapeum:-> get-db-pathname ()
+(serapeum:-> get-cache-pathname ()
              (values pathname &optional))
-(defun get-db-pathname ()
-  (let ((override (sb-posix:getenv "SOIL_ALIGN_DB")))
-    (if override (pathname override) +db-pathname+)))
+(defun get-cache-pathname ()
+  (let ((override (sb-posix:getenv "SOIL_ALIGN_CACHE")))
+    (if override (uiop:ensure-directory-pathname override)
+        +cache-pathname+)))
 
 (defun parse-ratio-<1 (string)
   (let ((x (parse-float string)))
@@ -157,7 +158,7 @@
          (workspace-side (%assoc :workspace-side    args))
          ;; Do not evaluate default here
          (nthreads       (%assoc :nthreads          args))
-         (db-pathname (get-db-pathname)))
+         (cache-pathname (get-cache-pathname)))
     (unless (or trans-image trans-matrix)
       (error 'util:user-input-error :message "No output selected"))
     (log:config (if (%assoc :verbose args) :info :warn))
@@ -173,14 +174,15 @@
         (log:info "Will use ~d threads" nthreads)
         (sift3d:set-num-threads nthreads))
       (with-pynndescent
-        (serapeum:mvlet ((source-kp source-desc-pca source-vt source-means
-                                    (log-eval
-                                     ((db:descriptors-cached source db-pathname min-dog) 4)
-                                     "Got descriptors of the source image"))
-                         (ref-kp ref-desc-pca ref-vt ref-means
-                                 (log-eval
-                                  ((db:descriptors-cached reference db-pathname min-dog) 4)
-                                  "Got descriptors of the reference image")))
+        (serapeum:mvlet
+            ((source-kp source-desc-pca source-vt source-means
+                        (log-eval
+                         ((cache:descriptors-cached source cache-pathname min-dog) 4)
+                         "Got descriptors of the source image"))
+             (ref-kp ref-desc-pca ref-vt ref-means
+                     (log-eval
+                      ((cache:descriptors-cached reference cache-pathname min-dog) 4)
+                      "Got descriptors of the reference image")))
           ;; Convert descriptors in ref PCA space
           (let* ((ref-desc ref-desc-pca)
                  (source-desc (pca:transform-pca
