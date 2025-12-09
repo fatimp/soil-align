@@ -196,10 +196,10 @@
                    ref-desc source-desc dist-ratio)))
             (log:info "Found matches between images")
             (multiple-value-bind (matrix error inliers)
-                (trans:affine-transform matches
-                                        :min-inliers min-inliers
-                                        :max-iter    2000
-                                        :err         fit-error)
+                (trans:rigid-transform matches
+                                       :min-inliers min-inliers
+                                       :max-iter    2000
+                                       :err         fit-error)
               (unless matrix
                 (log:info "Summary: ~d/~d descriptors, ~d matches"
                           (array-dimension source-kp 0)
