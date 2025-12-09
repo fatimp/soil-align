@@ -184,11 +184,10 @@ previous step."
              (list
               alexandria:positive-fixnum
               alexandria:positive-fixnum
-              alexandria:positive-fixnum
               (single-float 0f0))
              (values (or magicl:matrix/single-float null)
                      single-float alexandria:positive-fixnum &optional))
-(defun ransac-fit (matches max-iter k min-inliers err)
+(defun ransac-fit (matches max-iter k err)
   (labels ((%go (best-fit best-err best-inliers n)
              (if (zerop n)
                  (values best-fit best-err best-inliers)
@@ -200,8 +199,8 @@ previous step."
                          (%go best-fit best-err best-inliers n)))))))
     (let ((initial-error ff:single-float-positive-infinity))
       (if (< (length matches) k)
-          (values nil initial-error min-inliers)
-          (%go    nil initial-error min-inliers max-iter)))))
+          (values nil initial-error 1)
+          (%go    nil initial-error 1 max-iter)))))
 
 (serapeum:-> matrix->array (magicl:matrix/single-float)
              (values affine-transform &optional))
@@ -217,20 +216,18 @@ previous step."
              (list &key
                    (:max-iter    alexandria:positive-fixnum)
                    (:seed-points alexandria:positive-fixnum)
-                   (:min-inliers (single-float 0f0 1f0))
                    (:err         (single-float 0f0)))
              (values (or null affine-transform)
                      single-float alexandria:positive-fixnum &optional))
 (defun rigid-transform (matches
-                        &key (min-inliers 6f-1) (max-iter 500) (seed-points 15) (err 100f0))
+                        &key (max-iter 500) (seed-points 15) (err 100f0))
   "Find a rigid transform (which means rotation + translation) matrix
 which transforms the first keypoint in each pair of matches to the
 second keypoint. Keypoint parameters are related to the RANSAC
 algorithm: @c(MAX-ITER) is the maximal number of iterations,
-@c(SEED-POINTS) is an initial number of points to make a fit. A
-parameter @c(MIN-INLIERS) controls a minimal ratio of inliers to treat
-a fit as successful. A point is well-fit if \\(\\| y - Ax \\|\\) is
-less than @c(ERR), (\\(A\\) is a candidate for the found fit)."
+@c(SEED-POINTS) is an initial number of points to make a fit. A point
+is well-fit if \\(\\| y - Ax \\|\\) is less than @c(ERR), (\\(A\\) is
+a candidate for the found fit)."
   (multiple-value-bind (fit error inliers)
-      (ransac-fit matches max-iter seed-points (floor (* (length matches) min-inliers)) err)
+      (ransac-fit matches max-iter seed-points err)
     (values (if fit (matrix->array fit)) error inliers)))

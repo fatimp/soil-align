@@ -83,10 +83,6 @@
             :long        "fit-error"
             :description "The maximal allowed fit error to treat a sample as inlier"
             :fn          #'parse-float)
-    (option :min-inliers "N"
-            :long        "min-inliers"
-            :description "A fraction of inliers to accept a fit [0-1]"
-            :fn          #'parse-ratio-<1)
     (option :ransac-iter "M"
             :long        "ransac-iterations"
             :description "Number of RANSAC iterations"
@@ -152,7 +148,6 @@
 (defun %main ()
   (let* ((args (parse-argv *parser*))
          (min-dog (float (%assoc :min-dog           args 0.1) 0d0))
-         (min-inliers    (%assoc :min-inliers       args 0.6))
          (dist-ratio     (%assoc :dist-ratio        args 1.2))
          (fit-error      (%assoc :fit-error         args 100.0))
          (trans-image    (%assoc :transformed-image args))
@@ -202,7 +197,6 @@
             (log:info "Found matches between images")
             (multiple-value-bind (matrix error inliers)
                 (trans:rigid-transform matches
-                                       :min-inliers min-inliers
                                        :max-iter    ransac-iter
                                        :err         fit-error)
               (unless matrix
