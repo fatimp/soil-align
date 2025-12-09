@@ -86,7 +86,11 @@
     (option :min-inliers "N"
             :long        "min-inliers"
             :description "A fraction of inliers to accept a fit [0-1]"
-            :fn          #'parse-ratio-<1))
+            :fn          #'parse-ratio-<1)
+    (option :ransac-iter "M"
+            :long        "ransac-iterations"
+            :description "Number of RANSAC iterations"
+            :fn          #'parse-integer))
    (argument :reference "reference")
    (argument :source    "source")))
 
@@ -156,6 +160,7 @@
          (reference      (%assoc :reference         args))
          (source         (%assoc :source            args))
          (workspace-side (%assoc :workspace-side    args))
+         (ransac-iter    (%assoc :ransac-iter       args 2000))
          ;; Do not evaluate default here
          (nthreads       (%assoc :nthreads          args))
          (cache-pathname (get-cache-pathname)))
@@ -198,7 +203,7 @@
             (multiple-value-bind (matrix error inliers)
                 (trans:rigid-transform matches
                                        :min-inliers min-inliers
-                                       :max-iter    2000
+                                       :max-iter    ransac-iter
                                        :err         fit-error)
               (unless matrix
                 (log:info "Summary: ~d/~d descriptors, ~d matches"
