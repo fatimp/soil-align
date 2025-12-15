@@ -11,215 +11,223 @@
 (in-package :soil-align/sift3d)
 
 ;; Libraries
-(cffi:define-foreign-library libimutil
-  (:unix (:or "libimutil.so"))
-  (t (:default "libimutil")))
-
 (cffi:define-foreign-library libsift3d
   (:unix (:or "libsift3D.so"))
   (t (:default "libsift3D")))
 
-(cffi:use-foreign-library libimutil)
 (cffi:use-foreign-library libsift3D)
 
 ;; ==========
 ;;   Images
 ;; ==========
 
-(cffi:defcstruct (image :size 104)
-  (data (:pointer :float)))
+(serapeum:defconstructor image
+  (pointer t))
 
-;; Can be safely called after init_im()
-(cffi:defcfun ("init_im_with_dims" %init-im-with-dims) :int
-  (image (:pointer (:struct image)))
-  (nx    :int)
-  (ny    :int)
-  (nz    :int)
-  (nc    :int))
+(cffi:defcfun (%make-image "sift3d_make_image") :pointer
+  (nx :int)
+  (ny :int)
+  (nz :int)
+  (nc :int))
 
-(cffi:defcfun ("init_im" %init-im) :void
-  (image (:pointer (:struct image))))
+(serapeum:-> make-image
+             (unsigned-byte unsigned-byte unsigned-byte unsigned-byte)
+             (values image &optional))
+(defun make-image (nx ny nz nc)
+  (let ((image (%make-image nx ny nz nc)))
+    (when (cffi:null-pointer-p image)
+      (error 'util:ffi-error :message "Cannot allocate an image"))
+    (image image)))
 
-(cffi:defcfun ("im_free" %im-free) :void
-  (image (:pointer (:struct image))))
+(cffi:defcfun (%free-image "sift3d_free_image") :void
+  (image :pointer))
 
-(serapeum:-> array->image (t (simple-array single-float 3))
+(serapeum:-> free-image (image) (values &optional))
+(defun free-image (image)
+  (%free-image (image-pointer image))
+  (values))
+
+(cffi:defcfun (%image-data "sift3d_image_data") (:pointer :float)
+  (image :pointer))
+
+(serapeum:-> copy-to-image (image (simple-array single-float 3))
              (values &optional))
-(defun array->image (image array)
-  (unless (zerop
-           (%init-im-with-dims
-            image
-            (array-dimension array 0)
-            (array-dimension array 1)
-            (array-dimension array 2)
-            1))
-    (error 'util:ffi-error :message "Cannot allocate an image"))
-  (let ((data-ptr (cffi:foreign-slot-value image '(:struct image) 'data)))
+(defun copy-to-image (image array)
+  (let ((data-ptr (%image-data (image-pointer image))))
     (loop for i below (array-total-size array) do
           (setf (cffi:mem-aref data-ptr :float i)
                 (row-major-aref array i))))
   (values))
 
 (defmacro with-image ((image array) &body body)
-  `(cffi:with-foreign-object (,image '(:struct image))
-     (%init-im ,image)
-     (unwind-protect
-          (progn
-            (array->image ,image ,array)
-            ,@body)
-       (%im-free ,image))))
+  (let ((array-sym (gensym "ARRAY")))
+    `(let* ((,array-sym ,array)
+            (,image (make-image (array-dimension ,array-sym 0)
+                                (array-dimension ,array-sym 1)
+                                (array-dimension ,array-sym 2)
+                                1)))
+       (unwind-protect
+            (progn
+              (copy-to-image ,image ,array-sym)
+              ,@body)
+         (free-image ,image)))))
 
-;; ====================
-;;  The main structure
-;; ====================
+;; =============
+;;  Other types
+;; =============
 
-(cffi:defcstruct (sift3d :size 304))
+(macrolet ((define-ffi-type (type constructor destructor)
+             (flet ((mk-symbol (str)
+                      (intern (format nil str (symbol-name type)))))
+               (let ((lowlevel-constructor-name (mk-symbol "%MAKE-~a"))
+                     (lowlevel-destructor-name  (mk-symbol "%FREE-~a"))
+                     (constructor-name (mk-symbol "MAKE-~a"))
+                     (destructor-name  (mk-symbol "FREE-~a"))
+                     (unwrap (mk-symbol "~a-POINTER"))
+                     (macro-name (mk-symbol "WITH-~a")))
+                 `(progn
+                    (serapeum:defconstructor ,type
+                      (pointer t))
 
-(cffi:defcfun ("init_SIFT3D" %init-sift3d) :int
-  (sift3d (:pointer (:struct sift3d))))
+                    (cffi:defcfun (,lowlevel-constructor-name ,constructor) :pointer)
+                    (cffi:defcfun (,lowlevel-destructor-name ,destructor) :void
+                      (obj :pointer))
 
-(cffi:defcfun ("cleanup_SIFT3D" %cleanup-sift3d) :void
-  (sift3d (:pointer (:struct sift3d))))
+                    (serapeum:-> ,constructor-name () (values ,type &optional))
+                    (defun ,constructor-name ()
+                      (let ((ptr (,lowlevel-constructor-name)))
+                        (when (cffi:null-pointer-p ptr)
+                          (error 'util:ffi-error :message
+                                 ,(format nil "Cannot allocate a ~a" type)))
+                        (,type ptr)))
 
-(defun init-sift3d (sift3d)
-  (unless (zerop (%init-sift3d sift3d))
-    (error 'util:ffi-error :message "Cannot allocate SIFT3D object")))
+                    (serapeum:-> ,destructor-name (,type) (values &optional))
+                    (defun ,destructor-name (obj)
+                      (,lowlevel-destructor-name (,unwrap obj))
+                      (values))
 
-(defmacro with-sift3d ((sift3d) &body body)
-  `(cffi:with-foreign-object (,sift3d '(:struct sift3d))
-     (init-sift3d ,sift3d)
-     (unwind-protect
-          (progn
-            ,@body)
-       (%cleanup-sift3d ,sift3d))))
+                    (defmacro ,macro-name ((var) &body body)
+                      `(let ((,var (,',constructor-name)))
+                         (unwind-protect
+                              (progn ,@body)
+                           (,',destructor-name ,var)))))))))
+  (define-ffi-type matrix "sift3d_make_mat_rm" "sift3d_free_mat_rm")
+  (define-ffi-type detector "sift3d_make_detector" "sift3d_free_detector")
+  (define-ffi-type keypoint-store "sift3d_make_keypoint_store" "sift3d_free_keypoint_store")
+  (define-ffi-type descriptor-store "sift3d_make_descriptor_store" "sift3d_free_descriptor_store"))
+
+;; ==========
+;;  Matrices
+;; ==========
+
+(defconstant +type-double+ 0)
+(defconstant +type-float+  1)
+(defconstant +type-int+    2)
+
+(cffi:defcfun (%matrix-data "sift3d_mat_rm_data") :pointer
+  (obj :pointer))
+
+(cffi:defcfun (%matrix-dimensions "sift3d_mat_rm_dimensions") :void
+  (obj :pointer)
+  (num-cols (:pointer :int))
+  (num-rows (:pointer :int)))
+
+(cffi:defcfun (%matrix-type "sift3d_mat_rm_type") :int
+  (obj :pointer))
+
+;; Type unsafe
+(serapeum:-> matrix-data (matrix) (values t &optional))
+(defun matrix-data (matrix)
+  (%matrix-data (matrix-pointer matrix)))
+
+(serapeum:-> matrix-type (matrix) (values unsigned-byte &optional))
+(defun matrix-type (matrix)
+  (%matrix-type (matrix-pointer matrix)))
+
+(serapeum:-> matrix-dimensions (matrix) (values integer integer &optional))
+(defun matrix-dimensions (matrix)
+  (cffi:with-foreign-objects
+      ((cols-ptr :int)
+       (rows-ptr :int))
+    (%matrix-dimensions (matrix-pointer matrix) cols-ptr rows-ptr)
+    (values (cffi:mem-ref rows-ptr :int)
+            (cffi:mem-ref cols-ptr :int))))
 
 ;; ===============
 ;; Keypoint store
 ;; ===============
 
-(cffi:defcstruct (keypoint-store :size 48))
+(cffi:defcfun (%sort-keypoints-by-strength "sift3d_keypoint_store_sort_by_strength") :void
+  (store :pointer)
+  (limit :int))
 
-(cffi:defcfun ("init_Keypoint_store" %init-keypoint-store) :int
-  (store (:pointer (:struct keypoint-store))))
+(serapeum:-> sort-keypoints-by-strength (keypoint-store unsigned-byte)
+             (values &optional))
+(defun sort-keypoints-by-strength (store limit)
+  (%sort-keypoints-by-strength (keypoint-store-pointer store) limit)
+  (values))
 
-(cffi:defcfun ("cleanup_Keypoint_store" %cleanup-keypoint-store) :void
-  (store (:pointer (:struct keypoint-store))))
-
-(defun init-keypoint-store (store)
-  (unless (zerop (%init-keypoint-store store))
-    (error 'util:ffi-error :message "Cannot allocate keypoint store")))
-
-(defmacro with-keypoint-store ((store) &body body)
-  `(cffi:with-foreign-object (,store '(:struct keypoint-store))
-     (init-keypoint-store ,store)
-     (unwind-protect
-          (progn
-            ,@body)
-       (%cleanup-keypoint-store ,store))))
-
-;; ================
+;; =================
 ;; Descriptor store
-;; ================
+;; =================
 
-(cffi:defcstruct (descriptor-store :size 32))
+(cffi:defcfun (%desc-store-to-matrix "sift3d_descriptor_store_to_mat_rm") :int
+  (store  :pointer)
+  (matrix :pointer))
 
-(cffi:defcfun ("init_SIFT3D_Descriptor_store" %init-descriptor-store) :int
-  (store (:pointer (:struct descriptor-store))))
-
-(cffi:defcfun ("cleanup_SIFT3D_Descriptor_store" %cleanup-descriptor-store) :void
-  (store (:pointer (:struct descriptor-store))))
-
-(defun init-descriptor-store (store)
-  (unless (zerop (%init-descriptor-store store))
-    (error 'util:ffi-error :message "Cannot allocate descriptor store")))
-
-(defmacro with-descriptor-store ((store) &body body)
-  `(cffi:with-foreign-object (,store '(:struct descriptor-store))
-     (init-descriptor-store ,store)
-     (unwind-protect
-          (progn
-            ,@body)
-       (%cleanup-descriptor-store ,store))))
+(serapeum:-> desc-store-to-matrix (descriptor-store matrix)
+             (values &optional))
+(defun desc-store-to-matrix (store matrix)
+  (unless (zerop (%desc-store-to-matrix
+                  (descriptor-store-pointer store)
+                  (matrix-pointer matrix)))
+    (error 'util:ffi-error :message "Cannot copy descriptors to a matrix"))
+  (values))
 
 ;; =========
-;; Matrices
+;; Detector
 ;; =========
 
-;; But first of all the datatypes
-(defconstant +type-double+ 0)
-(defconstant +type-float+  1)
-(defconstant +type-int+    2)
+(cffi:defcfun (%detect-keypoints "sift3d_detect_keypoints") :int
+  (detector :pointer)
+  (image    :pointer)
+  (kp-store :pointer))
 
-(cffi:defcstruct matrix
-  (data   (:pointer :float))
-  (size   :uint64) ;; FIXME: size_t!
-  (ncols  :int)
-  (nrows  :int)
-  (unused :int)
-  (type   :int))
-
-(cffi:defcfun ("init_Mat_rm" %init-matrix) :int
-  (matrix   (:pointer (:struct matrix)))
-  (nrows    :int)
-  (ncols    :int)
-  (type     :int) ;; This is a fucking enum!
-  (set-zero :int))
-
-(cffi:defcfun ("cleanup_Mat_rm" %cleanup-matrix) :void
-  (matrix (:pointer (:struct matrix))))
-
-(defun init-matrix (matrix nrows ncols type set-zero-p)
-  (unless (zerop (%init-matrix matrix nrows ncols type
-                               (if set-zero-p 1 0)))
-    (error 'util:ffi-error :message "Cannot initialize a matrix")))
-
-(defmacro with-matrix ((matrix) &body body)
-  `(cffi:with-foreign-object (,matrix '(:struct matrix))
-     (init-matrix ,matrix 0 0 +type-float+ nil)
-     (unwind-protect
-          (progn
-            ,@body)
-       (%cleanup-matrix ,matrix))))
-
-;; ==============================================
-;; Keypoint detection and descriptors extraction
-;; ==============================================
-
-(cffi:defcfun ("set_peak_thresh_SIFT3D" %set-peak-threshold) :int
-  (sift3d    (:pointer (:struct sift3d)))
-  (threshold :double))
-
-(defun set-peak-threshold (sift3d threshold)
-  (unless (zerop (%set-peak-threshold sift3d threshold))
-    (error 'util:ffi-error :message "Cannot set peak threshold")))
-
-(cffi:defcfun ("SIFT3D_detect_keypoints" %detect-keypoints) :int
-  (sift3d (:pointer (:struct sift3d)))
-  (image  (:pointer (:struct image)))
-  (store  (:pointer (:struct keypoint-store))))
-
-(defun detect-keypoints (sift3d image store)
-  (unless (zerop (%detect-keypoints sift3d image store))
+(serapeum:-> detect-keypoints (detector image keypoint-store)
+             (values &optional))
+(defun detect-keypoints (detector image store)
+  (unless (zerop (%detect-keypoints
+                  (detector-pointer detector)
+                  (image-pointer image)
+                  (keypoint-store-pointer store)))
     (error 'util:ffi-error :message "Cannot detect keypoints"))
-  store)
+  (values))
 
-(cffi:defcfun ("SIFT3D_extract_descriptors" %extract-descriptors) :int
-  (sift3d           (:pointer (:struct sift3d)))
-  (keypoint-store   (:pointer (:struct keypoint-store)))
-  (descriptor-store (:pointer (:struct descriptor-store))))
+(cffi:defcfun (%extract-descriptors "sift3d_extract_descriptors") :int
+  (detector   :pointer)
+  (kp-store   :pointer)
+  (desc-store :pointer))
 
-(defun extract-descriptors (sift3d keypoint-store descriptor-store)
-  (unless (zerop (%extract-descriptors sift3d keypoint-store descriptor-store))
+(serapeum:-> extract-descriptors (detector keypoint-store descriptor-store)
+             (values &optional))
+(defun extract-descriptors (detector kp-store desc-store)
+  (unless (zerop (%extract-descriptors
+                  (detector-pointer detector)
+                  (keypoint-store-pointer kp-store)
+                  (descriptor-store-pointer desc-store)))
     (error 'util:ffi-error :message "Cannot extract descriptors"))
-  descriptor-store)
+  (values))
 
-(cffi:defcfun ("SIFT3D_Descriptor_store_to_Mat_rm" %descriptors->matrix) :int
-  (store  (:pointer (:struct descriptor-store)))
-  (matrix (:pointer (:struct matrix))))
+(cffi:defcfun (%set-peak-threshold "sift3d_detector_set_peak_thresh") :int
+  (detector :pointer)
+  (thresh   :double))
 
-(defun descriptors->matrix (store matrix)
-  (unless (zerop (%descriptors->matrix store matrix))
-    (error 'util:ffi-error :message "Cannot copy descriptors to a matrix")))
+(serapeum:-> set-peak-threshold (detector (double-float 0d0 1d0))
+             (values &optional))
+(defun set-peak-threshold (detector threshold)
+  (unless (zerop (%set-peak-threshold (detector-pointer detector) threshold))
+    (error 'util:ffi-error :message "Cannot set the peak threshold"))
+  (values))
 
 ;; =========================
 ;; The ultimate WITH- macro
@@ -231,7 +239,7 @@
   (car
    (reduce
     (lambda (binding acc)
-      (destructuring-bind (macro-name var &rest args)
+      (destructuring-bind (var macro-name &rest args)
           binding
         (let ((macro-sym (intern (format nil "WITH-~a" macro-name))))
           `((,macro-sym (,var ,@args) ,@acc)))))
@@ -257,6 +265,8 @@
                 (setf (aref descr  i j) (aref array i (+ j util:+descriptor-offset+)))))
     (values coords descr)))
 
+(defconstant +max-keypoints+ 300000)
+
 ;; Now, high-level function for descriptor arrays
 (serapeum:-> descriptors ((util:image single-float) &optional (double-float 0d0 1d0))
              (values (util:fixed-entries #.util:+descriptor-offset+)
@@ -267,25 +277,27 @@ keypoint coordinates and their descriptors. The parameter
 @c(PEAK-THRESHOLD) controls a number of descriptors, with smaller
 value providing more descriptors. Providing a value lesser than the
 default results in a great number of unstable descriptors."
-  (with-sift3d-objects ((sift3d           sift3d)
+  (with-sift3d-objects ((detector   detector)
                         ;; Here we call TRANSPOSE because Sift3D
                         ;; library accepts arrays in column-major
                         ;; order (but outputs normal row-major ordered
                         ;; arrays).
-                        (image            image (util:transpose-3d array))
-                        (keypoint-store   keypoint-store)
-                        (descriptor-store descriptor-store)
-                        (matrix           matrix))
-    (set-peak-threshold sift3d peak-threshold)
-    (detect-keypoints sift3d image keypoint-store)
-    (extract-descriptors sift3d keypoint-store descriptor-store)
-    (descriptors->matrix descriptor-store matrix)
-    (let ((n (cffi:foreign-slot-value matrix '(:struct matrix) 'nrows))
-          (desc-length (cffi:foreign-slot-value matrix '(:struct matrix) 'ncols))
-          (matrix-data (cffi:foreign-slot-value matrix '(:struct matrix) 'data)))
-      (unless (= desc-length (+ util:+descriptor-offset+ util:+descriptor-length+))
+                        (image      image (util:transpose-3d array))
+                        (kp-store   keypoint-store)
+                        (desc-store descriptor-store)
+                        (matrix     matrix))
+    (set-peak-threshold detector peak-threshold)
+    (detect-keypoints detector image kp-store)
+    (sort-keypoints-by-strength kp-store +max-keypoints+)
+    (extract-descriptors detector kp-store desc-store)
+    (desc-store-to-matrix desc-store matrix)
+    (multiple-value-bind (nrows ncols)
+        (matrix-dimensions matrix)
+      (unless (and (= (matrix-type matrix) +type-float+)
+                   (= ncols (+ util:+descriptor-offset+ util:+descriptor-length+)))
         (error 'util:ffi-error :message "Got strange descriptors"))
-      (let ((descriptors (make-array (list n desc-length) :element-type 'single-float)))
+      (let ((matrix-data (matrix-data matrix))
+            (descriptors (make-array (list nrows ncols) :element-type 'single-float)))
         ;; A descriptor is a vector of 771 single float elements.
         ;; The first 3 elements are the keypoint's coordinate and
         ;; the rest are arbitrary numbers which form a metric
