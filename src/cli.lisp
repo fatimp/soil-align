@@ -34,16 +34,17 @@
     (if override (uiop:ensure-directory-pathname override)
         +cache-pathname+)))
 
-(defun parse-ratio-<1 (string)
-  (let ((x (parse-float string)))
+(defun parse-threshold (string)
+  (let ((x (parse-float string :type 'double-float)))
     (unless (<= 0 x 1)
-      (error 'util:user-input-error :message "A ratio must be in the range [0, 1]"))
+      (error 'util:user-input-error
+             :message "The peak threshold must be in the range [0, 1]"))
     x))
 
-(defun parse-ratio->1 (string)
+(defun parse-dist-ratio (string)
   (let ((x (parse-float string)))
     (unless (>= x 1)
-      (error 'util:user-input-error :message "A ratio must be bigger than 1"))
+      (error 'util:user-input-error :message "The distance ratio must be bigger than 1"))
     x))
 
 (defparameter *parser*
@@ -74,11 +75,11 @@
     (option :min-dog     "P"
             :long        "min-dog"
             :description "The smallest allowed absolute DoG value, as a fraction of the largest"
-            :fn          #'parse-ratio-<1)
+            :fn          #'parse-threshold)
     (option :dist-ratio  "C"
             :long        "dist-ratio"
             :description "Controls what we consider a match"
-            :fn          #'parse-ratio->1)
+            :fn          #'parse-dist-ratio)
     (option :fit-error   "E"
             :long        "fit-error"
             :description "The maximal allowed fit error to treat a sample as inlier"
@@ -147,7 +148,7 @@
 
 (defun %main ()
   (let* ((args (parse-argv *parser*))
-         (min-dog (float (%assoc :min-dog           args 0.1) 0d0))
+         (min-dog        (%assoc :min-dog           args 1d-1))
          (dist-ratio     (%assoc :dist-ratio        args 1.2))
          (fit-error      (%assoc :fit-error         args 100.0))
          (trans-image    (%assoc :transformed-image args))
