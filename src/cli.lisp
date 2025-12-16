@@ -156,7 +156,7 @@
          (reference      (%assoc :reference         args))
          (source         (%assoc :source            args))
          (workspace-side (%assoc :workspace-side    args))
-         (ransac-iter    (%assoc :ransac-iter       args 2000))
+         (ransac-iter    (%assoc :ransac-iter       args 5000))
          ;; Do not evaluate default here
          (nthreads       (%assoc :nthreads          args))
          (cache-pathname (get-cache-pathname)))
