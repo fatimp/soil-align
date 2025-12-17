@@ -12,4 +12,4 @@ ultralisp shamazmazum-vector-sum
 github shamazmazum/magicl :tag kinda-stable
 github sviridov/climp
 asdf 3.3.7
-ql cl-conspack
+github conspack/cl-conspack
