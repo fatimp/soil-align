@@ -23,8 +23,8 @@
                :numpy-npy
                :nibbles
                :ironclad
+               :sqlite
                :vector-sum
-               :cl-conspack
                :climp
                (:feature :freebsd :freebsd-sysctl)
                :soil-align/pynndescent-so
@@ -32,7 +32,7 @@
                :soil-align/preprocessing
                :soil-align/pca
                :soil-align/sift3d
-               :soil-align/cache
+               :soil-align/db
                :soil-align/match
                :soil-align/transform
                :soil-align/array-transform
