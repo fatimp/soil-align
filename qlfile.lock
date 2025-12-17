@@ -42,6 +42,10 @@
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
   :version "ql-2024-10-12"))
+("cl-sqlite" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2019-08-13"))
 ("shamazmazum-vector-sum" .
  (:class qlot/source/ultralisp:source-ultralisp
   :initargs (:%version :latest)
@@ -58,7 +62,3 @@
  (:class qlot/source/asdf:source-asdf
   :initargs (:version "3.3.7")
   :version "3.3.7"))
-("cl-conspack" .
- (:class qlot/source/github:source-github
-  :initargs (:repos "conspack/cl-conspack" :ref nil :branch nil :tag nil)
-  :version "github-6e529d7b3a7223ef1bb5c7b9f18384ba67b50b09"))
