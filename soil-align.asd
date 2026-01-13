@@ -38,9 +38,25 @@
                :soil-align/array-transform
                :soil-align/io
                :soil-align/cli)
+  :in-order-to ((test-op (load-op "soil-align/tests")))
+  :perform (test-op (op system)
+                    (declare (ignore op system))
+                    (funcall
+                     (symbol-function
+                      (intern (symbol-name '#:run-tests)
+                              (find-package :soil-align/tests)))))
   :build-operation program-op
   :build-pathname "soil-align"
   :entry-point "soil-align/cli:main")
+
+(defsystem :soil-align/tests
+  :name :soil-align/tests
+  :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
+  :licence "2-clause BSD"
+  :pathname "tests"
+  :components ((:file "package")
+               (:file "tests" :depends-on ("package")))
+  :depends-on (:soil-align :fiveam :approx))
 
 #+sb-core-compression
 (defmethod asdf:perform ((o asdf:image-op) (c asdf:system))
