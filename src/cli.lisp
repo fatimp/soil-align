@@ -197,8 +197,8 @@
             (log:info "Found matches between images")
             (multiple-value-bind (matrix error inliers)
                 (trans:rigid-transform matches
-                                       :max-iter    ransac-iter
-                                       :err         fit-error)
+                                       :max-iter ransac-iter
+                                       :err      fit-error)
               (unless matrix
                 (log:info "Summary: ~d/~d descriptors, ~d matches"
                           (array-dimension source-kp 0)
