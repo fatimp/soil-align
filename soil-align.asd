@@ -17,6 +17,7 @@
                :float-features
                :cffi
                :magicl
+               :entzauberte-matrices
                :log4cl
                :parse-float
                :command-line-parse

@@ -1,35 +1,49 @@
 (defpackage soil-align/pca
   (:use #:cl)
-  (:local-nicknames (#:util #:soil-align/util))
+  (:local-nicknames (#:util #:soil-align/util)
+                    (#:em   #:entzauberte-matrices))
   (:export #:fit-pca
            #:transform-pca
            #:invert-pca))
 (in-package :soil-align/pca)
 
-(declaim (inline make-matrix))
-(defun make-matrix (storage shape &key (layout :column-major))
-  (magicl:make-tensor
-   'magicl:matrix/single-float shape
-   :layout layout
-   :storage (sb-ext:array-storage-vector storage)))
-
-;; Here the array of descriptors is transposed
-(serapeum:-> mean-values
-             ((simple-array single-float (#.util:+descriptor-length+ *)))
-             (values (simple-array single-float (#.util:+descriptor-length+)) &optional))
-(defun mean-values (descriptors)
+(serapeum:-> means ((util:fixed-entries #.util:+descriptor-length+))
+             (values (simple-array single-float (#.util:+descriptor-length+))
+                     &optional))
+(defun means (descriptors)
   (declare (optimize (speed 3)))
-  (let ((result (make-array util:+descriptor-length+
-                            :element-type 'single-float))
-        (samples (array-dimension descriptors 1))
-        (storage (sb-ext:array-storage-vector descriptors)))
-    (loop for i below (length result)
-          for start = (array-row-major-index descriptors i 0) do
-          (setf (aref result i)
-                (/ (vector-sum:sum storage
-                                   :start start
-                                   :end   (+ start samples))
-                   samples)))
+  (let ((accum (make-array #.util:+descriptor-length+
+                           :element-type 'vector-sum:sum-state
+                           :initial-element (vector-sum:sum-state 0.0))))
+    (util:loop-array (descriptors (i j))
+      (setf (aref accum j)
+            (vector-sum:add (aref accum j)
+                            (aref descriptors i j))))
+    (let ((samples (float (array-dimension descriptors 0))))
+      (map '(vector single-float)
+           (lambda (x)
+             (declare (type vector-sum:sum-state/single-float x))
+             (/ (vector-sum:state-sum x) samples))
+           accum))))
+
+(serapeum:-> op-means ((util:fixed-entries #.util:+descriptor-length+)
+                       (simple-array single-float (#.util:+descriptor-length+))
+                       (member :sub :add))
+             (values (util:fixed-entries #.util:+descriptor-length+)
+                     &optional))
+(defun op-means (descriptors means what)
+  (declare (optimize (speed 3)))
+  (let ((result (make-array (array-dimensions descriptors)
+                            :element-type 'single-float)))
+    (ecase what
+      (:sub
+       (util:loop-array (result (i j))
+         (setf (aref result i j)
+               (- (aref descriptors i j) (aref means j)))))
+      (:add
+       (util:loop-array (result (i j))
+         (setf (aref result i j)
+               (+ (aref descriptors i j) (aref means j))))))
     result))
 
 (serapeum:-> fit-pca
@@ -44,20 +58,14 @@ a PCA space of lesser dimensionality. The parameter
   ;; # samples >= # features
   (assert (>= (array-dimension descriptors 0)
               (array-dimension descriptors 1)))
-  (let* ((transposed (util:transpose-2d descriptors))
-         (means (mean-values transposed)))
-    (util:loop-array (transposed (i j))
-      (let ((mean (aref means i)))
-        (setf (aref transposed i j)
-              (- (aref transposed i j) mean))))
+  (let* ((means (means descriptors))
+         (centered (op-means descriptors means :sub)))
     (multiple-value-bind (u s vt)
-        (magicl:svd (make-matrix transposed (array-dimensions descriptors))
-                    :reduced t)
-      (declare (ignore u))
-      (let* ((s (make-array util:+descriptor-length+
-                            :element-type 'single-float
-                            :initial-contents (magicl:diag s)))
-             (samples (array-dimension descriptors 0))
+        (em:svd centered :compact t)
+      (declare (ignore u)
+               ;; TODO: figure out why I need this
+               (type (simple-array single-float) s))
+      (let* ((samples (array-dimension descriptors 0))
              ;; explained variance
              (ev (map '(vector single-float)
                       (lambda (x)
@@ -72,15 +80,11 @@ a PCA space of lesser dimensionality. The parameter
                                     (lambda (x) (< x explained-variance))
                                     cum-ratio :from-end t)
                                    0)))
-             (storage (magicl::storage vt))
              (result (make-array (list n-components util:+descriptor-length+)
-                     :element-type 'single-float)))
-        ;; Do not use MAGICL:SLICE. It's incredibly slow.
-        (declare (type (simple-array single-float (*)) storage))
-        (assert (eq (magicl:layout vt) :row-major))
+                                 :element-type 'single-float)))
         (util:loop-array (result (i j))
           (setf (aref result i j)
-                (aref storage (+ (* i util:+descriptor-length+) j))))
+                (aref vt i j)))
         (values result means)))))
 
 (serapeum:-> transform-pca
@@ -91,49 +95,15 @@ a PCA space of lesser dimensionality. The parameter
 (defun transform-pca (descriptors vt means)
   "Apply a transform to the PCA space to descriptors. @c(VT) and
 @c(MEANS) are obtained from @c(FIT-PCA)."
-  (declare (optimize (speed 3)))
-  (let ((transposed (util:transpose-2d descriptors)))
-    (util:loop-array (transposed (i j))
-      (let ((mean (aref means i)))
-        (setf (aref transposed i j)
-              (- (aref transposed i j) mean))))
-    (let* ((matrix (make-matrix transposed (array-dimensions descriptors)))
-           (vt (make-matrix vt (array-dimensions vt) :layout :row-major))
-           ;; Compute a transposed result to ease column-major to row-major
-           ;; conversion
-           (transformed (magicl:mult vt matrix :transb :t))
-           ;; Convert back to an ordinary lisp array
-           (result (make-array (reverse (magicl:shape transformed))
-                               :element-type 'single-float))
-           (storage (magicl::storage transformed)))
-      (declare (type (simple-array single-float) storage))
-      (assert (eq (magicl:layout transformed) :column-major))
-      (loop for i below (array-total-size result) do
-            (setf (row-major-aref result i)
-                  (aref storage i)))
-      result)))
+  (let ((centered (op-means descriptors means :sub)))
+    (em:mult centered vt :tb t)))
 
 (serapeum:-> invert-pca
-             ((simple-array single-float (* *))
+             ((util:fixed-entries *)
               (util:fixed-entries #.util:+descriptor-length+)
               (simple-array single-float (#.util:+descriptor-length+)))
              (values (util:fixed-entries #.util:+descriptor-length+) &optional))
 (defun invert-pca (pca vt means)
   "This is a (lossy) inversion of @c(TRANSFORM-PCA), i.e. it convects
 vectors in the PCA space back into the descriptor space."
-  (declare (optimize (speed 3)))
-  ;; Compute a transposed result to ease column-major to row-major
-  ;; conversion
-  (let* ((matrix   (make-matrix pca (reverse (array-dimensions pca))))
-         (vt       (make-matrix vt (array-dimensions vt) :layout :row-major))
-         (inverted (magicl:mult vt matrix :transa :t))
-         (storage  (magicl::storage inverted))
-         (result   (make-array (list (array-dimension pca 0) util:+descriptor-length+)
-                               :element-type 'single-float)))
-    (declare (type (simple-array single-float (*)) storage))
-    (assert (eq (magicl:layout inverted) :column-major))
-    (loop for i below (array-total-size result) do
-          (setf (row-major-aref result i) (aref storage i)))
-    (util:loop-array (result (i j))
-      (incf (aref result i j) (aref means j)))
-    result))
+  (op-means (em:mult pca vt) means :add))

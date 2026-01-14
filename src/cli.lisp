@@ -7,7 +7,8 @@
                     (#:io     #:soil-align/io)
                     (#:pca    #:soil-align/pca)
                     (#:trans  #:soil-align/transform)
-                    (#:atrans #:soil-align/array-transform))
+                    (#:atrans #:soil-align/array-transform)
+                    (#:em     #:entzauberte-matrices))
   (:export #:main))
 (in-package :soil-align/cli)
 
@@ -172,7 +173,7 @@
       (log:info "Starting")
       (let ((nthreads (or nthreads (default-thread-number))))
         (log:info "Will use ~d threads" nthreads)
-        (sift3d:set-num-threads nthreads))
+        (em:set-num-threads nthreads))
       (with-pynndescent
         (serapeum:mvlet ((source-kp source-desc-pca source-vt source-means
                                     (log-eval
