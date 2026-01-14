@@ -10,6 +10,6 @@ ql nibbles
 ql ironclad
 ql cl-sqlite
 ultralisp shamazmazum-vector-sum
-github shamazmazum/magicl :tag kinda-stable
 github sviridov/climp
 asdf 3.3.7
+ultralisp shamazmazum-entzauberte-matrices

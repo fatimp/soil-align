@@ -49,11 +49,7 @@
 ("shamazmazum-vector-sum" .
  (:class qlot/source/ultralisp:source-ultralisp
   :initargs (:%version :latest)
-  :version "ultralisp-20251217045000"))
-("magicl" .
- (:class qlot/source/github:source-github
-  :initargs (:repos "shamazmazum/magicl" :ref nil :branch nil :tag "kinda-stable")
-  :version "github-82f4e19cd299116deeb4685a93c72227543be829"))
+  :version "ultralisp-20260114095500"))
 ("climp" .
  (:class qlot/source/github:source-github
   :initargs (:repos "sviridov/climp" :ref nil :branch nil :tag nil)
@@ -62,3 +58,7 @@
  (:class qlot/source/asdf:source-asdf
   :initargs (:version "3.3.7")
   :version "3.3.7"))
+("shamazmazum-entzauberte-matrices" .
+ (:class qlot/source/ultralisp:source-ultralisp
+  :initargs (:%version :latest)
+  :version "ultralisp-20260114095500"))
