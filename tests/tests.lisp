@@ -41,9 +41,9 @@
                        (loop repeat 3 collect (random 100.0)))))
     (loop repeat 50
           ;; Number of inliers
-          for inliers = (+ 1000 (random 1000))
+          for inliers = (+ 2000 (random 1000))
           ;; Number of outliers
-          for outliers = (+ 100 (random 100))
+          for outliers = (+ 200 (random 100))
           ;; A simple transform
           for translation = (random-vec)
           for matches-good = (loop repeat inliers
