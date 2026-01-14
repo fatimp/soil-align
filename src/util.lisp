@@ -71,17 +71,6 @@
            (aref array k j i)))
     result))
 
-(serapeum:-> transpose-2d ((simple-array single-float 2))
-             (values (simple-array single-float 2) &optional))
-(defun transpose-2d (array)
-  (declare (optimize (speed 3)))
-  (let ((result (make-array (reverse (array-dimensions array))
-                            :element-type 'single-float)))
-    (loop-array (result (i j))
-     (setf (aref result i j)
-           (aref array j i)))
-    result))
-
 ;; Linear interpolation
 
 (declaim (inline interp1d))

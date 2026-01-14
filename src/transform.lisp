@@ -1,6 +1,7 @@
 (defpackage soil-align/transform
   (:use #:cl)
   (:local-nicknames (#:ff   #:float-features)
+                    (#:em   #:entzauberte-matrices)
                     (#:util #:soil-align/util))
   (:export #:rigid-transform
            #:affine-transform))
@@ -8,6 +9,14 @@
 
 (deftype coordinate       () '(simple-array single-float (3)))
 (deftype affine-transform () '(simple-array single-float (4 4)))
+
+(alexandria:define-constant +flip-det+
+    (make-array '(3 3)
+                :element-type 'single-float
+                :initial-contents '((1.0 0.0  0.0)
+                                    (0.0 1.0  0.0)
+                                    (0.0 0.0 -1.0)))
+  :test #'equalp)
 
 ;; =============
 ;; Model fitting
@@ -52,69 +61,84 @@
 (declaim (inline affine-rotation))
 (defun affine-rotation (rot)
   "Convert a 3x3 rotation matrix to an affine transform."
-  (let ((result (magicl:eye '(4 4) :type 'single-float)))
+  (let ((result (make-array '(4 4)
+                            :element-type 'single-float
+                            :initial-element 0.0)))
     (loop for i below 3 do
-          (loop for j below 3 do
-                (setf (magicl:tref result i j)
-                      (magicl:tref rot i j))))
+      (loop for j below 3 do
+        (setf (aref result i j)
+              (aref rot i j))))
+    (setf (aref result 3 3) 1.0)
     result))
 
 (declaim (inline affine-translation))
 (defun affine-translation (trans)
   "Convert a translation vector to an affine transform."
-  (let ((result (magicl:eye '(4 4) :type 'single-float)))
+  (let ((result (make-array '(4 4)
+                            :element-type 'single-float
+                            :initial-element 0.0)))
+    (loop for i below 4 do
+      (setf (aref result i i) 1.0))
     (loop for i below 3 do
-          (setf (magicl:tref result i 3)
+          (setf (aref result i 3)
                 (aref trans i)))
     result))
 
 (serapeum:-> model-fit (list)
-             (values magicl:matrix/single-float &optional))
+             (values affine-transform &optional))
 (defun model-fit (matches)
   "Find a constrained affine transform which fits the matches."
+  (declare (optimize (speed 3)))
   (let ((q (mapcar #'car matches))
         (p (mapcar #'cdr matches)))
     (serapeum:mvlet ((q c1 (make-matrix q))
                      (p c2 (make-matrix p)))
-      (let ((q (magicl:from-array q (array-dimensions q)))
-            (p (magicl:from-array p (array-dimensions p))))
-        (multiple-value-bind (u s vt)
-            (magicl:svd (magicl:mult p q :transa :t))
-          (declare (ignore s))
-          (let* ((uvt (magicl:mult u vt))
-                 (rot (if (> (magicl:det uvt) 0) uvt
-                          (magicl:@ u (magicl:from-diag '(1.0 1.0 -1.0)) vt))))
-            (magicl:@ (affine-translation c2)
+      (multiple-value-bind (u s vt)
+          (em:svd (em:mult p q :ta t))
+        (declare (ignore s))
+        (let* ((uvt (em:mult u vt))
+               (rot (if (> (em:det uvt) 0) uvt
+                        (em:mult u (em:mult +flip-det+ vt)))))
+            (em:mult (affine-translation c2)
+                     (em:mult
                       (affine-rotation rot)
-                      (magicl:inv (affine-translation c1)))))))))
+                      (em:invert (affine-translation c1)))))))))
 
-(serapeum:-> match-fit-error (magicl:matrix/single-float
-                              (cons coordinate coordinate))
+(serapeum:-> to-affine-vector (coordinate)
+             (values (simple-array single-float (4)) &optional))
+(declaim (inline to-affine-vector))
+(defun to-affine-vector (v)
+  (let ((av (make-array 4 :element-type 'single-float)))
+    (replace av v)
+    (setf (aref av 3) 1.0)
+    av))
+
+(serapeum:-> match-fit-error (affine-transform (cons coordinate coordinate))
              (values single-float &optional))
 (defun match-fit-error (fit match)
   "Calculate an error of the fit for a pair of coordinates."
-  (let* ((p1 (car match))
-         (p2 (cdr match))
-         (c1 (magicl:ones '(4) :type 'single-float))
-         (c2 (magicl:ones '(4) :type 'single-float)))
-    (loop for i below 3 do
-          (setf (magicl:tref c1 i) (aref p1 i)
-                (magicl:tref c2 i) (aref p2 i)))
-    (magicl:norm (magicl:.- (magicl:@ fit c1) c2))))
+  (declare (optimize (speed 3)))
+  (let ((v1 (to-affine-vector (car match)))
+        (v2 (to-affine-vector (cdr match))))
+    (em:norm
+     (em:sub
+      (em:column (em:mult fit (em:vector->column v1)) 0)
+      v2))))
 
-(serapeum:-> fit-error (magicl:matrix/single-float list)
+(serapeum:-> fit-error (affine-transform list)
              (values single-float &optional))
 (defun fit-error (fit matches)
   "Calculate the total fit error."
+  (declare (optimize (speed 3)))
   (sqrt
    (loop for (p1 . p2) in matches sum
-         (let ((c1 (magicl:ones '(4) :type 'single-float))
-               (c2 (magicl:ones '(4) :type 'single-float)))
-           (loop for i below 3 do
-                 (setf (magicl:tref c1 i) (aref p1 i)
-                       (magicl:tref c2 i) (aref p2 i)))
-           (let ((diff (magicl:.- (magicl:@ fit c1) c2)))
-             (magicl:dot diff diff))))))
+         (let ((v1 (to-affine-vector p1))
+               (v2 (to-affine-vector p2)))
+           (let ((diff (em:sub (em:column
+                                (em:mult fit (em:vector->column v1)) 0)
+                               v2)))
+             (em:dot diff diff)))
+         single-float)))
 
 ;; ============
 ;; Ransac stuff
@@ -153,7 +177,7 @@ without repetitions."
               (single-float 0f0)
               (single-float 0f0))
          (values boolean &optional
-                 magicl:matrix/single-float
+                 affine-transform
                  (single-float 0f0)
                  alexandria:positive-fixnum))
 (defun ransac-iteration (matches k ninliers ε prev-error)
@@ -180,38 +204,6 @@ previous step."
                   (and (= n ninliers) (< err prev-error)))
           (values t fit err n))))))
 
-(serapeum:-> ransac-fit
-             (list
-              alexandria:positive-fixnum
-              alexandria:positive-fixnum
-              (single-float 0f0))
-             (values (or magicl:matrix/single-float null)
-                     single-float alexandria:positive-fixnum &optional))
-(defun ransac-fit (matches max-iter k err)
-  (labels ((%go (best-fit best-err best-inliers n)
-             (if (zerop n)
-                 (values best-fit best-err best-inliers)
-                 (multiple-value-bind (successp fit %err %inliers)
-                     (ransac-iteration matches k best-inliers err best-err)
-                   (let ((n (1- n)))
-                     (if successp
-                         (%go fit %err %inliers n)
-                         (%go best-fit best-err best-inliers n)))))))
-    (let ((initial-error ff:single-float-positive-infinity))
-      (if (< (length matches) k)
-          (values nil initial-error 1)
-          (%go    nil initial-error 1 max-iter)))))
-
-(serapeum:-> matrix->array (magicl:matrix/single-float)
-             (values affine-transform &optional))
-(defun matrix->array (m)
-  (let ((res (make-array '(4 4) :element-type 'single-float)))
-    (loop for i below 4 do
-          (loop for j below 4 do
-                (setf (aref res i j)
-                      (magicl:tref m i j))))
-    res))
-
 (serapeum:-> rigid-transform
              (list &key
                    (:max-iter    alexandria:positive-fixnum)
@@ -219,15 +211,26 @@ previous step."
                    (:err         (single-float 0f0)))
              (values (or null affine-transform)
                      single-float alexandria:positive-fixnum &optional))
-(defun rigid-transform (matches
-                        &key (max-iter 500) (seed-points 15) (err 100f0))
-  "Find a rigid transform (which means rotation + translation) matrix
+(defun rigid-transform (matches &key (max-iter 500) (seed-points 15) (err 100f0))
+    "Find a rigid transform (which means rotation + translation) matrix
 which transforms the first keypoint in each pair of matches to the
 second keypoint. Keypoint parameters are related to the RANSAC
 algorithm: @c(MAX-ITER) is the maximal number of iterations,
 @c(SEED-POINTS) is an initial number of points to make a fit. A point
 is well-fit if \\(\\| y - Ax \\|\\) is less than @c(ERR), (\\(A\\) is
 a candidate for the found fit)."
-  (multiple-value-bind (fit error inliers)
-      (ransac-fit matches max-iter seed-points err)
-    (values (if fit (matrix->array fit)) error inliers)))
+  (declare (optimize (speed 3)))
+  (labels ((%go (best-fit best-err best-inliers n)
+             (declare (type alexandria:non-negative-fixnum n))
+             (if (zerop n)
+                 (values best-fit best-err best-inliers)
+                 (multiple-value-bind (successp fit %err %inliers)
+                     (ransac-iteration matches seed-points best-inliers err best-err)
+                   (let ((n (1- n)))
+                     (if successp
+                         (%go fit %err %inliers n)
+                         (%go best-fit best-err best-inliers n)))))))
+    (let ((initial-error ff:single-float-positive-infinity))
+      (if (< (length matches) seed-points)
+          (values nil initial-error 1)
+          (%go    nil initial-error 1 max-iter)))))

@@ -16,7 +16,6 @@
                :alexandria
                :float-features
                :cffi
-               :magicl
                :entzauberte-matrices
                :log4cl
                :parse-float
