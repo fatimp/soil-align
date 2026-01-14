@@ -105,18 +105,19 @@
        (log:info ,@args)
        (values ,@variables))))
 
-(declaim (inline default-thread-number))
-(defun default-thread-number ()
-  #+freebsd
-  (min (floor (freebsd-sysctl:sysctl-by-name "kern.smp.cores") 2) 10)
-  #-freebsd
-  (progn
-    (log:warn
-     #.(concatenate
-        'string
-        "Cannot get default number of threads and will use only 1. "
-        "Use --threads to override this behavior."))
-    1))
+(declaim (inline number-of-threads))
+(defun number-of-threads (n)
+  (if n n
+      #+freebsd
+      (min (floor (freebsd-sysctl:sysctl-by-name "kern.smp.cores") 2) 10)
+      #-freebsd
+      (progn
+        (log:warn
+         #.(concatenate
+            'string
+            "Cannot get default number of threads and will use only 1. "
+            "Use --threads to override this behavior."))
+        1)))
 
 (serapeum:-> load-and-maybe-cut
              ((or string pathname) (or null alexandria:positive-fixnum))
@@ -157,8 +158,8 @@
          (source         (%assoc :source            args))
          (workspace-side (%assoc :workspace-side    args))
          (ransac-iter    (%assoc :ransac-iter       args 5000))
-         ;; Do not evaluate default here
          (nthreads       (%assoc :nthreads          args))
+         (nthreads (number-of-threads nthreads))
          (db-pathname (get-db-pathname)))
     (unless (or trans-image trans-matrix)
       (error 'util:user-input-error :message "No output selected"))
@@ -171,9 +172,8 @@
       ;; which allocates a lot.
       (sb-ext:gc :full t)
       (log:info "Starting")
-      (let ((nthreads (or nthreads (default-thread-number))))
-        (log:info "Will use ~d threads" nthreads)
-        (em:set-num-threads nthreads))
+      (log:info "Will use ~d threads" nthreads)
+      (em:set-num-threads nthreads)
       (with-pynndescent
         (serapeum:mvlet ((source-kp source-desc-pca source-vt source-means
                                     (log-eval
