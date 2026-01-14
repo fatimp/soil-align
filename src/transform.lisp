@@ -98,11 +98,10 @@
         (declare (ignore s))
         (let* ((uvt (em:mult u vt))
                (rot (if (> (em:det uvt) 0) uvt
-                        (em:mult u (em:mult +flip-det+ vt)))))
-            (em:mult (affine-translation c2)
-                     (em:mult
-                      (affine-rotation rot)
-                      (em:invert (affine-translation c1)))))))))
+                        (em:@ u +flip-det+ vt))))
+            (em:@ (affine-translation c2)
+                  (affine-rotation rot)
+                  (em:invert (affine-translation c1))))))))
 
 (serapeum:-> to-affine-vector (coordinate)
              (values (simple-array single-float (4)) &optional))
