@@ -6,6 +6,7 @@
 
 * [https://github.com/fatimp/SIFT3D](SIFT3D) version 2.0+
 * [https://pypi.org/project/pynndescent](pynndescent)
+* OpenBLAS
 * SBCL (другая реализация CL не подойдёт)
 * Qlot
 
