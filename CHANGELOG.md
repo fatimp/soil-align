@@ -1,5 +1,22 @@
 # Changelog
 
+## Version 0.6
+
+* Incompatible change: `affine-transform` is replaced with
+  `rigid-transform`. The latter function finds a rigid transform (rotation +
+  translation) from one set of points to another, which excludes scaling and
+  shearing.
+* Incompatible change: Remove the `:min-inliers` argument from
+  `rigid-transform`. Now the first priority for a search for a model is to
+  maximize the number of inliers.
+* Incompatible change: Use our fork of SIFT3D with an improved API and a number
+  of bug fixes.
+* Improvement: Now only at most 300000 strongest keypoints are processed. This
+  also guarantees that keypoints can be stored in a BLOB object of a SQLite
+  database.
+* Incompatible change: Soil-align now uses entzauberte-matrices instead of
+  MAGICL. This results in OpenBLAS being an additional dependency.
+
 ## Version 0.5
 
 * Improvement: Search for matches in the PCA space of the reference image which
