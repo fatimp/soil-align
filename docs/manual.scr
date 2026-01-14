@@ -9,7 +9,7 @@
 
    Зависимости:
    @begin(list)
-     @item(@link[uri="https://github.com/bbrister/SIFT3D"](SIFT3D))
+     @item(@link[uri="https://github.com/fatimp/SIFT3D"](SIFT3D) версия 2.0+)
      @item(@link[uri="https://pypi.org/project/pynndescent"](pynndescent))
      @item(SBCL (другая реализация CL не подойдёт))
      @item(OpenBLAS)
@@ -129,7 +129,7 @@ Description of flags and options
 
   Пакет @c(soil-align/transform):
   @cl:with-package[name="soil-align/transform"](
-    @cl:doc(function affine-transform)
+    @cl:doc(function rigid-transform)
   )
 
   Пакет @c(soil-align/array-transform):
