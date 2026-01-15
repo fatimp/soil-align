@@ -220,9 +220,13 @@
                     matrix :nthreads nthreads))
                   "Computed a transformed image")
                  trans-image))
-              (log:info "Summary: ~d/~d descriptors, ~d matches, ~d inliers, ~f fit error"
+              (log:info #.(concatenate
+                           'string
+                           "Summary: ~d/~d descriptors, ~d independent parameters, "
+                           "~d matches, ~d inliers, ~f fit error")
                         (array-dimension source-kp 0)
                         (array-dimension ref-kp 0)
+                        (array-dimension ref-desc 1)
                         (length matches)
                         inliers error))))))))
 
