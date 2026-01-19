@@ -47,6 +47,15 @@
       (error 'util:user-input-error :message "The distance ratio must be bigger than 1"))
     x))
 
+(defun parse-model (string)
+  (cond
+    ((string= string "rigid")
+     #'trans:rigid-transform-fit)
+    ((string= string "rigid+scaling")
+     #'trans:rigid+scaling-transform-fit)
+    (t
+     (error 'util:user-input-error :message "Unknown model"))))
+
 (defparameter *parser*
   (seq
    (optional
@@ -64,14 +73,18 @@
             :short       #\w
             :fn          #'parse-integer
             :description "Side of a workspace which is cut from center of the input images")
-    (option :transform-matrix "m.npy"
-            :short       #\m
-            :long        "matrix"
+    (option :transform-output "m.npy"
+            :short       #\O
+            :long        "transform-output"
             :description "Output file name for a transform matrix (.npy)")
-    (option :transformed-image "out.npy"
+    (option :output      "out.npy"
             :short       #\o
-            :long        "image"
+            :long        "output"
             :description "Output file name for a transformed image (.npy or .raw)")
+    (option :model       "MODEL"
+            :long        "model"
+            :description "Model to fit (can be 'rigid' or 'rigid+scaling')"
+            :fn          #'parse-model)
     (option :min-dog     "P"
             :long        "min-dog"
             :description "The smallest allowed absolute DoG value, as a fraction of the largest"
@@ -149,16 +162,17 @@
 
 (defun %main ()
   (let* ((args (parse-argv *parser*))
-         (min-dog        (%assoc :min-dog           args 1d-1))
-         (dist-ratio     (%assoc :dist-ratio        args 1.2))
-         (fit-error      (%assoc :fit-error         args 100.0))
-         (trans-image    (%assoc :transformed-image args))
-         (trans-matrix   (%assoc :transform-matrix  args))
-         (reference      (%assoc :reference         args))
-         (source         (%assoc :source            args))
-         (workspace-side (%assoc :workspace-side    args))
-         (ransac-iter    (%assoc :ransac-iter       args 5000))
-         (nthreads       (%assoc :nthreads          args))
+         (min-dog        (%assoc :min-dog          args 1d-1))
+         (dist-ratio     (%assoc :dist-ratio       args 1.2))
+         (fit-error      (%assoc :fit-error        args 100.0))
+         (trans-image    (%assoc :output           args))
+         (trans-matrix   (%assoc :transform-output args))
+         (model          (%assoc :model            args #'trans:rigid-transform-fit))
+         (reference      (%assoc :reference        args))
+         (source         (%assoc :source           args))
+         (workspace-side (%assoc :workspace-side   args))
+         (ransac-iter    (%assoc :ransac-iter      args 5000))
+         (nthreads       (%assoc :nthreads         args))
          (nthreads (number-of-threads nthreads))
          (db-pathname (get-db-pathname)))
     (unless (or trans-image trans-matrix)
@@ -196,7 +210,7 @@
                    ref-desc source-desc dist-ratio)))
             (log:info "Found matches between images")
             (multiple-value-bind (matrix error inliers)
-                (trans:ransac #'trans:rigid-transform-fit matches
+                (trans:ransac model matches
                               :max-iter ransac-iter
                               :err      fit-error)
               (unless matrix
