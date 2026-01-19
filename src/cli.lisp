@@ -111,12 +111,11 @@
           (progn ,@body)
        (match:nndescent-deinitialize))))
 
-;; Fucking LOG:INFO is a macro too
-(defmacro log-eval ((computation &optional (values 1)) &rest args)
-  (let ((variables (loop repeat values collect (gensym))))
-    `(multiple-value-bind ,variables ,computation
-       (log:info ,@args)
-       (values ,@variables))))
+(declaim (inline log-eval))
+(defun log-eval (message f &rest args)
+  (let ((list (multiple-value-list (apply f args))))
+    (log:info message)
+    (apply #'values list)))
 
 (declaim (inline number-of-threads))
 (defun number-of-threads (n)
@@ -192,15 +191,13 @@
         (em:set-num-threads nthreads)
         (with-pynndescent
           (serapeum:mvlet ((source-kp source-desc-pca source-vt source-means
-                                      (log-eval
-                                          ((db:descriptors-cached source db-pathname min-dog)
-                                           4)
-                                          "Got descriptors of the source image"))
-                           (ref-kp ref-desc-pca ref-vt ref-means
-                                   (log-eval
-                                       ((db:descriptors-cached reference db-pathname min-dog)
-                                        4)
-                                       "Got descriptors of the reference image")))
+                                      (log-eval "Got descriptors of the source image"
+                                                #'db:descriptors-cached source
+                                                db-pathname min-dog))
+                           (ref-kp    ref-desc-pca ref-vt ref-means
+                                      (log-eval "Got descriptors of the reference image"
+                                                #'db:descriptors-cached reference
+                                                db-pathname min-dog)))
             ;; Convert descriptors in ref PCA space
             (let* ((ref-desc ref-desc-pca)
                    (source-desc (pca:transform-pca
@@ -229,14 +226,13 @@
                   (numpy-npy:store-array matrix trans-matrix))
                 (when trans-image
                   (io:write-image
-                   (log-eval
-                       ((atrans:apply-transform
-                         (if workspace-side
-                             ;; Load a bigger image once more
-                             (numpy-npy:load-array (%assoc :source args))
-                             source)
-                         matrix ref-shape :nthreads nthreads))
-                       "Computed a transformed image")
+                   (log-eval "Computed a transformed image"
+                             #'atrans:apply-transform
+                             (if workspace-side
+                                 ;; Load a bigger image once more
+                                 (numpy-npy:load-array (%assoc :source args))
+                                 source)
+                             matrix ref-shape :nthreads nthreads)
                    trans-image))
                 (log:info #.(concatenate
                              'string
