@@ -19,7 +19,7 @@
   (split "[ \\n]+"
          (with-output-to-string (out)
            (uiop:run-program
-            '("python-config" "--cflags" "--ldflags" "--embed")
+            '("python3-config" "--cflags" "--ldflags" "--embed")
             :output out))))
 
 (defun get-numpy-flags ()
