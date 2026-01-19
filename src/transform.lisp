@@ -3,12 +3,17 @@
   (:local-nicknames (#:ff   #:float-features)
                     (#:em   #:entzauberte-matrices)
                     (#:util #:soil-align/util))
-  (:export #:rigid-transform
+  (:export #:rigid-transform-fit
+           #:ransac
            #:affine-transform))
 (in-package :soil-align/transform)
 
 (deftype coordinate       () '(simple-array single-float (3)))
 (deftype affine-transform () '(simple-array single-float (4 4)))
+
+(deftype fit-function ()
+  '(function (list)
+    (values affine-transform &optional)))
 
 (alexandria:define-constant +flip-det+
     (make-array '(3 3)
@@ -84,10 +89,10 @@
                 (aref trans i)))
     result))
 
-(serapeum:-> model-fit (list)
+(serapeum:-> rigid-transform-fit (list)
              (values affine-transform &optional))
-(defun model-fit (matches)
-  "Find a constrained affine transform which fits the matches."
+(defun rigid-transform-fit (matches)
+  "Find a rigid transform which fits the matches."
   (declare (optimize (speed 3)))
   (let ((q (mapcar #'car matches))
         (p (mapcar #'cdr matches)))
@@ -169,17 +174,16 @@ without repetitions."
                   (%go (cdr list) indices acc (1+ i))))))
       (%go list indices nil 0))))
 
-(serapeum:-> ransac-iteration
-             (list
-              alexandria:positive-fixnum
-              alexandria:positive-fixnum
-              (single-float 0f0)
-              (single-float 0f0))
-         (values boolean &optional
-                 affine-transform
-                 (single-float 0f0)
-                 alexandria:positive-fixnum))
-(defun ransac-iteration (matches k ninliers ε prev-error)
+(serapeum:-> ransac-iteration (fit-function list
+                               alexandria:positive-fixnum
+                               alexandria:positive-fixnum
+                               (single-float 0f0)
+                               (single-float 0f0))
+             (values boolean &optional
+                     affine-transform
+                     (single-float 0f0)
+                     alexandria:positive-fixnum))
+(defun ransac-iteration (f matches k ninliers ε prev-error)
   "Perform one iteration of RANSAC fit, namely find a linear model ΒS
 so that ΒS(XS) fits YS. K is the number of points to find an initial
 fit. NINLIERS is the number of inliers which is necassary to treat the
@@ -189,42 +193,42 @@ previous step."
   (let* ((length (length matches))
          (indices (random-integers k length))
          (subset (select-entries matches indices))
-         (fit (model-fit subset))
+         (fit (funcall f subset))
          (inliers
           (loop for match in matches
                 for err = (match-fit-error fit match)
                 when (< err ε)
                 collect match)))
     (when inliers
-      (let* ((fit (model-fit inliers))
+      (let* ((fit (funcall f inliers))
              (err (fit-error fit inliers))
              (n (length inliers)))
         (when (or (> n ninliers)
                   (and (= n ninliers) (< err prev-error)))
           (values t fit err n))))))
 
-(serapeum:-> rigid-transform
-             (list &key
-                   (:max-iter    alexandria:positive-fixnum)
-                   (:seed-points alexandria:positive-fixnum)
-                   (:err         (single-float 0f0)))
+(serapeum:-> ransac (fit-function list &key
+                     (:max-iter    alexandria:positive-fixnum)
+                     (:seed-points alexandria:positive-fixnum)
+                     (:err         (single-float 0f0)))
              (values (or null affine-transform)
                      single-float alexandria:positive-fixnum &optional))
-(defun rigid-transform (matches &key (max-iter 500) (seed-points 15) (err 100f0))
-    "Find a rigid transform (which means rotation + translation) matrix
-which transforms the first keypoint in each pair of matches to the
-second keypoint. Keypoint parameters are related to the RANSAC
-algorithm: @c(MAX-ITER) is the maximal number of iterations,
-@c(SEED-POINTS) is an initial number of points to make a fit. A point
-is well-fit if \\(\\| y - Ax \\|\\) is less than @c(ERR), (\\(A\\) is
-a candidate for the found fit)."
+(defun ransac (f matches &key (max-iter 500) (seed-points 15) (err 100f0))
+    "Find an affine transform which transforms the first keypoint in
+each pair of matches to the second keypoint. Keypoint parameters are
+related to the RANSAC algorithm: @c(MAX-ITER) is the maximal number of
+iterations, @c(SEED-POINTS) is an initial number of points to make a
+fit. A point is well-fit if \\(\\| y - Ax \\|\\) is less than @c(ERR),
+(\\(A\\) is a candidate for the found fit). The function @c(F) fits a
+subset of @c(MATCHES) and controls the type of transform (e.g. rigid,
+translation, etc.)."
   (declare (optimize (speed 3)))
   (labels ((%go (best-fit best-err best-inliers n)
              (declare (type alexandria:non-negative-fixnum n))
              (if (zerop n)
                  (values best-fit best-err best-inliers)
                  (multiple-value-bind (successp fit %err %inliers)
-                     (ransac-iteration matches seed-points best-inliers err best-err)
+                     (ransac-iteration f matches seed-points best-inliers err best-err)
                    (let ((n (1- n)))
                      (if successp
                          (%go fit %err %inliers n)
