@@ -132,18 +132,17 @@
             "Use --threads to override this behavior."))
         1)))
 
-(serapeum:-> load-and-maybe-cut
-             ((or string pathname) (or null alexandria:positive-fixnum))
+(serapeum:-> maybe-cut ((util:image (unsigned-byte 8))
+                        (or null alexandria:positive-fixnum))
              (values (util:image (unsigned-byte 8))
                      alexandria:non-negative-fixnum
                      alexandria:non-negative-fixnum
                      alexandria:non-negative-fixnum
                      &optional))
-(defun load-and-maybe-cut (pathname side)
-  (let ((array (io:read-image pathname)))
-    (if side
-        (util:cut-from-center array side)
-        (values array 0 0 0))))
+(defun maybe-cut (array side)
+  (if side
+      (util:cut-from-center array side)
+      (values array 0 0 0)))
 
 (serapeum:-> add-offsets!
              (alexandria:non-negative-fixnum
@@ -179,70 +178,75 @@
       (error 'util:user-input-error :message "No output selected"))
     (log:config (if (%assoc :verbose args) :info :warn))
     (log:config :daily +log-pathname+ :backup nil)
-    (serapeum:mvlet ((source    sx sy sz (load-and-maybe-cut source    workspace-side))
-                     (reference rx ry rz (load-and-maybe-cut reference workspace-side)))
-      ;; Run a full GC because uncut arrays may be really big, we need
-      ;; to collect them now because later we will run foreign code
-      ;; which allocates a lot.
-      (sb-ext:gc :full t)
-      (log:info "Starting")
-      (log:info "Will use ~d threads" nthreads)
-      (em:set-num-threads nthreads)
-      (with-pynndescent
-        (serapeum:mvlet ((source-kp source-desc-pca source-vt source-means
-                                    (log-eval
-                                     ((db:descriptors-cached source db-pathname min-dog) 4)
-                                     "Got descriptors of the source image"))
-                         (ref-kp ref-desc-pca ref-vt ref-means
-                                 (log-eval
-                                  ((db:descriptors-cached reference db-pathname min-dog) 4)
-                                  "Got descriptors of the reference image")))
-          ;; Convert descriptors in ref PCA space
-          (let* ((ref-desc ref-desc-pca)
-                 (source-desc (pca:transform-pca
-                               (pca:invert-pca source-desc-pca source-vt source-means)
-                               ref-vt ref-means))
-                 ;; Find matches between descriptors
-                 (matches
-                  (match:match-descriptors
-                   (add-offsets! rx ry rz ref-kp)
-                   (add-offsets! sx sy sz source-kp)
-                   ref-desc source-desc dist-ratio)))
-            (log:info "Found matches between images")
-            (multiple-value-bind (matrix error inliers)
-                (trans:ransac model matches
-                              :max-iter ransac-iter
-                              :err      fit-error)
-              (unless matrix
-                (log:info "Summary: ~d/~d descriptors, ~d matches"
+    (let* ((source    (io:read-image source))
+           (reference (io:read-image reference))
+           (ref-shape (array-dimensions reference)))
+      (serapeum:mvlet ((source    sx sy sz (maybe-cut source    workspace-side))
+                       (reference rx ry rz (maybe-cut reference workspace-side)))
+        ;; Run a full GC because uncut arrays may be really big, we need
+        ;; to collect them now because later we will run foreign code
+        ;; which allocates a lot.
+        (sb-ext:gc :full t)
+        (log:info "Starting")
+        (log:info "Will use ~d threads" nthreads)
+        (em:set-num-threads nthreads)
+        (with-pynndescent
+          (serapeum:mvlet ((source-kp source-desc-pca source-vt source-means
+                                      (log-eval
+                                          ((db:descriptors-cached source db-pathname min-dog)
+                                           4)
+                                          "Got descriptors of the source image"))
+                           (ref-kp ref-desc-pca ref-vt ref-means
+                                   (log-eval
+                                       ((db:descriptors-cached reference db-pathname min-dog)
+                                        4)
+                                       "Got descriptors of the reference image")))
+            ;; Convert descriptors in ref PCA space
+            (let* ((ref-desc ref-desc-pca)
+                   (source-desc (pca:transform-pca
+                                 (pca:invert-pca source-desc-pca source-vt source-means)
+                                 ref-vt ref-means))
+                   ;; Find matches between descriptors
+                   (matches
+                     (match:match-descriptors
+                      (add-offsets! rx ry rz ref-kp)
+                      (add-offsets! sx sy sz source-kp)
+                      ref-desc source-desc dist-ratio)))
+              (log:info "Found matches between images")
+              (multiple-value-bind (matrix error inliers)
+                  (trans:ransac model matches
+                                :max-iter ransac-iter
+                                :err      fit-error)
+                (unless matrix
+                  (log:info "Summary: ~d/~d descriptors, ~d matches"
+                            (array-dimension source-kp 0)
+                            (array-dimension ref-kp 0)
+                            (length matches))
+                  (log:error "Consensus is not achieved")
+                  (uiop:quit 0))
+                (log:info "Found a transform matrix")
+                (when trans-matrix
+                  (numpy-npy:store-array matrix trans-matrix))
+                (when trans-image
+                  (io:write-image
+                   (log-eval
+                       ((atrans:apply-transform
+                         (if workspace-side
+                             ;; Load a bigger image once more
+                             (numpy-npy:load-array (%assoc :source args))
+                             source)
+                         matrix ref-shape :nthreads nthreads))
+                       "Computed a transformed image")
+                   trans-image))
+                (log:info #.(concatenate
+                             'string
+                             "Summary: ~d/~d descriptors, ~d independent parameters, "
+                             "~d matches, ~d inliers, ~f fit error")
                           (array-dimension source-kp 0)
                           (array-dimension ref-kp 0)
-                          (length matches))
-                (log:error "Consensus is not achieved")
-                (uiop:quit 0))
-              (log:info "Found a transform matrix")
-              (when trans-matrix
-                (numpy-npy:store-array matrix trans-matrix))
-              (when trans-image
-                (io:write-image
-                 (log-eval
-                  ((atrans:apply-transform
-                    (if workspace-side
-                        ;; Load a bigger image once more
-                        (numpy-npy:load-array (%assoc :source args))
-                        source)
-                    matrix :nthreads nthreads))
-                  "Computed a transformed image")
-                 trans-image))
-              (log:info #.(concatenate
-                           'string
-                           "Summary: ~d/~d descriptors, ~d independent parameters, "
-                           "~d matches, ~d inliers, ~f fit error")
-                        (array-dimension source-kp 0)
-                        (array-dimension ref-kp 0)
-                        (array-dimension ref-desc 1)
-                        (length matches)
-                        inliers error))))))))
+                          (array-dimension ref-desc 1)
+                          (length matches)
+                          inliers error)))))))))
 
 (deftype foreign-user-input-error () '(or cmd-line-parse-error))
 
