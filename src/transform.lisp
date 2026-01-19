@@ -4,6 +4,7 @@
                     (#:em   #:entzauberte-matrices)
                     (#:util #:soil-align/util))
   (:export #:rigid-transform-fit
+           #:rigid+scaling-transform-fit
            #:ransac
            #:affine-transform))
 (in-package :soil-align/transform)
@@ -23,45 +24,9 @@
                                     (0.0 0.0 -1.0)))
   :test #'equalp)
 
-;; =============
-;; Model fitting
-;; =============
-
-(serapeum:-> center (list) (values coordinate &optional))
-(defun center (coords)
-  (declare (optimize (speed 3)))
-  (let ((length (length coords))
-        (state (vector-sum:sum-state 0f0)))
-    (labels ((%go (state-x state-y state-z coords)
-               (if (null coords)
-                   (make-array 3
-                               :element-type 'single-float
-                               :initial-contents
-                               (list (/ (vector-sum:state-sum state-x) length)
-                                     (/ (vector-sum:state-sum state-y) length)
-                                     (/ (vector-sum:state-sum state-z) length)))
-                   (let ((coord (car coords)))
-                     (declare (type coordinate coord))
-                     (%go (vector-sum:add state-x (aref coord 0))
-                          (vector-sum:add state-y (aref coord 1))
-                          (vector-sum:add state-z (aref coord 2))
-                          (cdr coords))))))
-      (%go state state state coords))))
-
-(serapeum:-> make-matrix (list)
-             (values (util:fixed-entries 3) coordinate &optional))
-(defun make-matrix (coords)
-  "Convert a list of coordinates to a Nx3 matrix + 3-vector centroid."
-  (let* ((center (center coords))
-         (length (length coords))
-         (matrix (make-array (list length 3) :element-type 'single-float)))
-    (loop for i below length
-          for coord of-type coordinate in coords do
-          (loop for j below 3 do
-                (setf (aref matrix i j)
-                      (- (aref coord j)
-                         (aref center j)))))
-    (values matrix center)))
+;; ======================
+;; Transform constructors
+;; ======================
 
 (declaim (inline affine-rotation))
 (defun affine-rotation (rot)
@@ -89,15 +54,102 @@
                 (aref trans i)))
     result))
 
-(serapeum:-> rigid-transform-fit (list)
+(declaim (inline affine-uniform-scaling))
+(defun affine-uniform-scaling (s)
+  "Convert uniform scaling to an affine transform"
+  (let ((result (make-array '(4 4)
+                            :element-type 'single-float
+                            :initial-element 0.0)))
+    (loop for i below 3 do
+      (setf (aref result i i) s))
+    (setf (aref result 3 3) 1.0)
+    result))
+
+;; ==============================
+;; Determine centroid and scaling
+;; ==============================
+
+(serapeum:-> center (list) (values coordinate &optional))
+(defun center (coords)
+  (declare (optimize (speed 3)))
+  (let ((length (length coords))
+        (state (vector-sum:sum-state 0f0)))
+    (labels ((%go (state-x state-y state-z coords)
+               (if (null coords)
+                   (make-array 3
+                               :element-type 'single-float
+                               :initial-contents
+                               (list (/ (vector-sum:state-sum state-x) length)
+                                     (/ (vector-sum:state-sum state-y) length)
+                                     (/ (vector-sum:state-sum state-z) length)))
+                   (let ((coord (car coords)))
+                     (declare (type coordinate coord))
+                     (%go (vector-sum:add state-x (aref coord 0))
+                          (vector-sum:add state-y (aref coord 1))
+                          (vector-sum:add state-z (aref coord 2))
+                          (cdr coords))))))
+      (%go state state state coords))))
+
+(serapeum:-> uniform-scale (list coordinate)
+             (values single-float &optional))
+(defun uniform-scale (coords center)
+  (declare (optimize (speed 3)))
+  (let ((length (length coords))
+        (state (vector-sum:sum-state 0f0)))
+    (labels ((update (state coord idx)
+               (vector-sum:add state (expt (- (aref coord  idx)
+                                              (aref center idx))
+                                           2)))
+             (%go (state-x state-y state-z coords)
+               (if (null coords)
+                   (values (vector-sum:state-sum state-x)
+                           (vector-sum:state-sum state-y)
+                           (vector-sum:state-sum state-z))
+                   (let ((coord (car coords)))
+                     (declare (type coordinate coord))
+                     (%go (update state-x coord 0)
+                          (update state-y coord 1)
+                          (update state-z coord 2)
+                          (cdr coords))))))
+      (declare (inline update))
+      (multiple-value-bind (x y z)
+          (%go state state state coords)
+        (sqrt (/ (+ x y z) length))))))
+
+;; ==========================================
+;; Rigid transform + uniform scale (optional)
+;; ==========================================
+
+(serapeum:-> make-matrix (boolean list)
+             (values (util:fixed-entries 3) coordinate single-float &optional))
+(defun make-matrix (scalingp coords)
+  "Convert a list of coordinates to a Nx3 matrix + 3-vector centroid +
+scaling parameter. The scaling parameter is always 1.0 if @c(scalingp)
+is @c(NIL)."
+  (declare (optimize (speed 3)))
+  (let* ((center (center coords))
+         (scale  (if scalingp (uniform-scale coords center) 1.0))
+         (length (length coords))
+         (matrix (make-array (list length 3) :element-type 'single-float)))
+    (loop for i below length
+          for coord of-type coordinate in coords do
+          (loop for j below 3 do
+                (setf (aref matrix i j)
+                      (/ (- (aref coord j)
+                            (aref center j))
+                         scale))))
+    (values matrix center scale)))
+
+(serapeum:-> %rigid-transform-fit (boolean list)
              (values affine-transform &optional))
-(defun rigid-transform-fit (matches)
-  "Find a rigid transform which fits the matches."
+(defun %rigid-transform-fit (scalingp matches)
+  "Find a rigid transform which fits the matches. If @c(scalingp) is
+@c(T), the transform also includes uniform scaling."
   (declare (optimize (speed 3)))
   (let ((q (mapcar #'car matches))
         (p (mapcar #'cdr matches)))
-    (serapeum:mvlet ((q c1 (make-matrix q))
-                     (p c2 (make-matrix p)))
+    (serapeum:mvlet ((q c1 s1 (make-matrix scalingp q))
+                     (p c2 s2 (make-matrix scalingp p)))
       (multiple-value-bind (u s vt)
           (em:svd (em:mult p q :ta t))
         (declare (ignore s))
@@ -105,8 +157,22 @@
                (rot (if (> (em:det uvt) 0) uvt
                         (em:@ u +flip-det+ vt))))
             (em:@ (affine-translation c2)
+                  (affine-uniform-scaling s2)
                   (affine-rotation rot)
+                  (em:invert (affine-uniform-scaling s1))
                   (em:invert (affine-translation c1))))))))
+
+(serapeum:-> rigid-transform-fit (list)
+             (values affine-transform &optional))
+(defun rigid-transform-fit (matches)
+  "Find a rigid transform which fits the matches."
+  (%rigid-transform-fit nil matches))
+
+(serapeum:-> rigid+scaling-transform-fit (list)
+             (values affine-transform &optional))
+(defun rigid+scaling-transform-fit (matches)
+  "Find a rigid+scaling transform which fits the matches."
+  (%rigid-transform-fit t matches))
 
 (serapeum:-> to-affine-vector (coordinate)
              (values (simple-array single-float (4)) &optional))
