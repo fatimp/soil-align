@@ -55,7 +55,8 @@
                                   collect (cons (random-vec)
                                                 (random-vec)))
           for matches = (append matches-good matches-bad)
-          for transform = (tran:rigid-transform matches :max-iter 1000 :err 10.0)
+          for transform = (tran:ransac #'tran:rigid-transform-fit matches
+                                       :max-iter 1000 :err 10.0)
           do
              (loop for i below 3 do
                (is-true
