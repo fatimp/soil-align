@@ -156,11 +156,11 @@ is @c(NIL)."
         (let* ((uvt (em:mult u vt))
                (rot (if (> (em:det uvt) 0) uvt
                         (em:@ u +flip-det+ vt))))
-            (em:@ (affine-translation c2)
-                  (affine-uniform-scaling s2)
-                  (affine-rotation rot)
-                  (em:invert (affine-uniform-scaling s1))
-                  (em:invert (affine-translation c1))))))))
+          (em:@ (affine-translation c2)
+                (affine-uniform-scaling s2)
+                (affine-rotation rot)
+                (em:invert (affine-uniform-scaling s1))
+                (em:invert (affine-translation c1))))))))
 
 (serapeum:-> rigid-transform-fit (list)
              (values affine-transform &optional))
