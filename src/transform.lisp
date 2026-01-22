@@ -133,11 +133,15 @@ is @c(NIL)."
          (matrix (make-array (list length 3) :element-type 'single-float)))
     (loop for i below length
           for coord of-type coordinate in coords do
-          (loop for j below 3 do
-                (setf (aref matrix i j)
-                      (/ (- (aref coord j)
-                            (aref center j))
-                         scale))))
+            (loop for j below 3
+                  for diff = (- (aref coord j) (aref center j)) do
+                    (setf (aref matrix i j)
+                          ;; SIFT3D can return points with the same coordinate and
+                          ;; different descriptors. This can result in entries in COORDS
+                          ;; being all the same and SCALE = 0. This case will be later
+                          ;; rejected by the RANSAC. Just do this check so we don't signal
+                          ;; here.
+                          (if (zerop scale) diff (/ diff scale)))))
     (values matrix center scale)))
 
 (serapeum:-> %rigid-transform-fit (boolean list)
