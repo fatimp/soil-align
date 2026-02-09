@@ -1,5 +1,15 @@
 # Changelog
 
+## Version 0.7
+
+* Improvement: Log dimensionality of the compressed descriptor space.
+* Improvement: A new transform model: rigid + uniform scaling. Can be selected
+  with `--model rigid+scaling` in the CLI.
+* Improvement: `apply-transform` now has the `:background` argument which
+  specifies the value to be used with out-of-bounds array accesses.
+* Improvement: Allow building on systems which do not have `python-config`
+  alias.
+
 ## Version 0.6
 
 * Incompatible change: `affine-transform` is replaced with
