@@ -98,7 +98,6 @@
           (loop for i below 256
                 for idx = (+ index i)
                 for x   = (row-major-aref histograms idx)
-                ;; TODO: Add a constraint to x in sbcl-float-features
                 for x-clipped = (min x clip-value)
                 for residue   = (- x x-clipped)
                 do (setf (row-major-aref histograms idx) x-clipped)
