@@ -7,10 +7,6 @@
   (:export #:descriptors-cached))
 (in-package :soil-align/db)
 
-(declaim (inline convert-to-simple-array))
-(defun convert-to-simple-array (sequence)
-  (coerce sequence '(simple-array (unsigned-byte 8) (*))))
-
 (serapeum:-> image-hash ((util:image (unsigned-byte 8)))
              (values (simple-array (unsigned-byte 8) (32)) &optional))
 (defun image-hash (array)
