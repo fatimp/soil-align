@@ -42,10 +42,6 @@
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
   :version "ql-2024-10-12"))
-("cl-sqlite" .
- (:class qlot/source/ql:source-ql
-  :initargs (:%version :latest)
-  :version "ql-2019-08-13"))
 ("shamazmazum-vector-sum" .
  (:class qlot/source/ultralisp:source-ultralisp
   :initargs (:%version :latest)
@@ -66,3 +62,11 @@
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
   :version "ql-2023-02-14"))
+("lmdb" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2025-06-22"))
+("named-readtables" .
+ (:class qlot/source/github:source-github
+  :initargs (:repos "melisgl/named-readtables" :ref nil :branch nil :tag nil)
+  :version "github-aa6dab55abff3cca26b976d9a105c2006ca0c3b6"))

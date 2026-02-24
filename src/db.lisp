@@ -24,56 +24,18 @@
      digest (sb-ext:array-storage-vector array))
     (ironclad:produce-digest digest)))
 
-(serapeum:-> encode-floats ((simple-array single-float))
+(serapeum:-> encode-object (t)
              (values (simple-array (unsigned-byte 8) (*)) &optional))
-(defun encode-floats (array)
+(defun encode-object (object)
   (let ((stream (fast-io:make-output-buffer)))
-    (conspack:encode-to-buffer array stream)
+    (conspack:encode-to-buffer object stream)
     (fast-io:finish-output-buffer stream)))
 
-(serapeum:-> decode-floats ((simple-array (unsigned-byte 8) (*)))
-             (values (simple-array single-float) &optional))
-(defun decode-floats (octets)
+(serapeum:-> decode-object ((simple-array (unsigned-byte 8) (*)))
+             (values t &optional))
+(defun decode-object (octets)
   (nth-value
    0 (conspack:decode octets)))
-
-(serapeum:-> floats->ub8-vector ((simple-array single-float))
-             (values (simple-array (unsigned-byte 8) (*)) &optional))
-(defun floats->ub8-vector (array)
-  (declare (optimize (speed 3)))
-  (let* ((length (array-total-size array))
-         (result (make-array (* length 4)
-                             :element-type '(unsigned-byte 8))))
-    (loop for i below length do
-          (setf (nibbles:ieee-single-ref/le result (* i 4))
-                (row-major-aref array i)))
-    result))
-
-(serapeum:-> ub8-vector->floats
-             ((simple-array (unsigned-byte 8) (*))
-              (or list alexandria:positive-fixnum))
-             (values (simple-array single-float) &optional))
-(defun ub8-vector->floats (vector shape)
-  (declare (optimize (speed 3)))
-  (assert (= (length vector)
-             (* (if (atom shape) shape (reduce #'* shape)) 4)))
-  (let ((result (make-array shape
-                            :element-type 'single-float)))
-    (loop for i below (array-total-size result) do
-          (setf (row-major-aref result i)
-                (nibbles:ieee-single-ref/le vector (* i 4))))
-    result))
-
-(defun prepare-database (db)
-  (sqlite:execute-non-query
-   db #.(concatenate
-         'string
-         "create table if not exists descriptors ("
-         "sha256 blob primary key, "
-         "means blob not null, "
-         "vt    blob not null, "
-         "pca   blob not null, "
-         "coord blob not null);")))
 
 (serapeum:-> descriptors-cached
              ((util:image (unsigned-byte 8)) pathname)
@@ -97,38 +59,30 @@ space, a transform from the descriptor space to the PCA space,
 descriptor components means."
   (let ((hash (image-hash array)))
     (ensure-directories-exist db-pathname)
-    (sqlite:with-open-database (db (uiop:native-namestring db-pathname))
-      (prepare-database db)
-      (multiple-value-bind (means coord vt pca)
-          (sqlite:execute-one-row-m-v
-           db "select means, coord, vt, pca from descriptors where sha256 = ?" hash)
-        (if means
-            ;; Descriptors are in the database, return them
-            (values (decode-floats coord)
-                    (decode-floats pca)
-                    (decode-floats vt)
-                    (decode-floats means))
-            ;; else
-            (multiple-value-bind (coords descr)
-                (sift3d:descriptors (pre:clahe array))
-              (if (< (array-dimension descr 0)
-                     (array-dimension descr 1))
-                  (error 'util:db-error :message "Too small number of feature points")
-                  (multiple-value-bind (vt means)
-                      (pca:fit-pca descr 0.95)
-                    (let ((pca (pca:transform-pca descr vt means)))
-                      (sqlite:with-transaction db
-                        ;; Drop all stale entries
-                        (sqlite:execute-non-query
-                         db "delete from descriptors where sha256 = ?" hash)
-                        (sqlite:execute-non-query
-                         db #.(concatenate 'string
-                                           "insert into descriptors "
-                                           "(sha256, means, vt, pca, coord) "
-                                           "values (?, ?, ?, ?, ?)")
-                         hash
-                         (encode-floats means)
-                         (encode-floats vt)
-                         (encode-floats pca)
-                         (encode-floats coords)))
-                      (values coords pca vt means))))))))))
+    (lmdb+:with-env (env (uiop:native-namestring db-pathname)
+                         :if-does-not-exist :create
+                         :map-size          (* 64 (expt 2 30)))
+      (let ((db (lmdb+:get-db "descriptors" :env env)))
+        (let ((data (lmdb+:with-txn (:env env)
+                      (lmdb+:get db hash))))
+          ;; Descriptors are in the database, return them
+          (if data
+              ;; TODO: Do it without intermediate list consing ;)
+              (destructuring-bind (coord pca vt means)
+                  (decode-object data)
+                  (values coord pca vt means))
+              ;; else
+              (multiple-value-bind (coords descr)
+                  (sift3d:descriptors (pre:clahe array))
+                (if (< (array-dimension descr 0)
+                       (array-dimension descr 1))
+                    (error 'util:db-error :message "Too small number of feature points")
+                    (multiple-value-bind (vt means)
+                        (pca:fit-pca descr 0.95)
+                      (let ((pca (pca:transform-pca descr vt means)))
+                        (lmdb+:with-txn (:env env :write t)
+                          (lmdb+:put
+                           db hash
+                           (encode-object
+                            (list coords pca vt means))))
+                        (values coords pca vt means)))))))))))

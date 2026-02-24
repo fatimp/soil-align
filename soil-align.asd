@@ -23,7 +23,7 @@
                :numpy-npy
                :nibbles
                :ironclad
-               :sqlite
+               :lmdb
                :vector-sum
                :climp
                :cl-conspack

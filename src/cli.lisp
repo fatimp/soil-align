@@ -14,7 +14,7 @@
 
 (alexandria:define-constant +db-pathname+
     #+unix
-    #p"~/.local/share/soil-align/descriptors.sqlite"
+    #p"~/.local/share/soil-align/"
     #-unix
     (error "I don't know a suitable location where I can store the database.")
   :documentation "Path where the cache is stored"
