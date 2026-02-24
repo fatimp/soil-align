@@ -34,13 +34,6 @@
   (let ((override (sb-posix:getenv "SOIL_ALIGN_DB")))
     (if override (pathname override) +db-pathname+)))
 
-(defun parse-threshold (string)
-  (let ((x (parse-float string :type 'double-float)))
-    (unless (<= 0 x 1)
-      (error 'util:user-input-error
-             :message "The peak threshold must be in the range [0, 1]"))
-    x))
-
 (defun parse-dist-ratio (string)
   (let ((x (parse-float string)))
     (unless (>= x 1)
@@ -85,10 +78,6 @@
             :long        "model"
             :description "Model to fit (can be 'rigid' or 'rigid+scaling')"
             :fn          #'parse-model)
-    (option :min-dog     "P"
-            :long        "min-dog"
-            :description "The smallest allowed absolute DoG value, as a fraction of the largest"
-            :fn          #'parse-threshold)
     (option :dist-ratio  "C"
             :long        "dist-ratio"
             :description "Controls what we consider a match"
@@ -160,7 +149,6 @@
 
 (defun %main ()
   (let* ((args (parse-argv *parser*))
-         (min-dog        (%assoc :min-dog          args 1d-1))
          (dist-ratio     (%assoc :dist-ratio       args 1.2))
          (fit-error      (%assoc :fit-error        args 100.0))
          (trans-image    (%assoc :output           args))
@@ -193,11 +181,11 @@
           (serapeum:mvlet ((source-kp source-desc-pca source-vt source-means
                                       (log-eval "Got descriptors of the source image"
                                                 #'db:descriptors-cached source
-                                                db-pathname min-dog))
+                                                db-pathname))
                            (ref-kp    ref-desc-pca ref-vt ref-means
                                       (log-eval "Got descriptors of the reference image"
                                                 #'db:descriptors-cached reference
-                                                db-pathname min-dog)))
+                                                db-pathname)))
             ;; Convert descriptors in ref PCA space
             (let* ((ref-desc ref-desc-pca)
                    (source-desc (pca:transform-pca

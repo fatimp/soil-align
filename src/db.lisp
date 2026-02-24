@@ -57,7 +57,6 @@
          'string
          "create table if not exists descriptors ("
          "sha256 blob primary key, "
-         "mindog real not null, "
          "nsamples integer not null, "
          "features integer not null, "
          "means blob not null, "
@@ -66,14 +65,13 @@
          "coord blob not null);")))
 
 (serapeum:-> descriptors-cached
-             ((util:image (unsigned-byte 8)) pathname
-              &optional (double-float 0d0 1d0))
+             ((util:image (unsigned-byte 8)) pathname)
              (values (util:fixed-entries #.util:+descriptor-offset+)
                      (util:fixed-entries *)
                      (util:fixed-entries #.util:+descriptor-length+)
                      (simple-array single-float (#.util:+descriptor-length+))
                      &optional))
-(defun descriptors-cached (array db-pathname &optional (peak-threshold 1d-1))
+(defun descriptors-cached (array db-pathname)
   "Calculate image descriptors using 3D SIFT and cache them in a
 database. The next time the descriptors are calculated for this
 particular array the results are read from the database. The database
@@ -90,13 +88,13 @@ descriptor components means."
     (ensure-directories-exist db-pathname)
     (sqlite:with-open-database (db (uiop:native-namestring db-pathname))
       (prepare-database db)
-      (multiple-value-bind (peak-threshold-cached nsamples features means coord vt pca)
+      (multiple-value-bind (nsamples features means coord vt pca)
           (sqlite:execute-one-row-m-v
            db #.(concatenate 'string
-                             "select mindog, nsamples, features, means, coord, "
+                             "select nsamples, features, means, coord, "
                              "vt, pca from descriptors where sha256 = ?")
            hash)
-        (if (and peak-threshold-cached (<= peak-threshold-cached peak-threshold))
+        (if nsamples
             ;; Descriptors are in the database, decompress them from PCA space
             (let ((pca   (ub8-vector->floats pca   (list nsamples features)))
                   (vt    (ub8-vector->floats vt    (list features util:+descriptor-length+)))
@@ -105,7 +103,7 @@ descriptor components means."
                 (values coord pca vt means))
             ;; else
             (multiple-value-bind (coords descr)
-                (sift3d:descriptors (pre:clahe array) peak-threshold)
+                (sift3d:descriptors (pre:clahe array))
               (if (< (array-dimension descr 0)
                      (array-dimension descr 1))
                   (error 'util:db-error :message "Too small number of feature points")
@@ -119,11 +117,10 @@ descriptor components means."
                         (sqlite:execute-non-query
                          db #.(concatenate 'string
                                            "insert into descriptors "
-                                           "(sha256, mindog, nsamples, features, "
+                                           "(sha256, nsamples, features, "
                                            "means, vt, pca, coord) "
                                            "values (?, ?, ?, ?, ?, ?, ?, ?)")
-                         hash peak-threshold
-                         (array-dimension pca 0) (array-dimension pca 1)
+                         hash (array-dimension pca 0) (array-dimension pca 1)
                          (floats->ub8-vector means)
                          (floats->ub8-vector vt)
                          (floats->ub8-vector pca)

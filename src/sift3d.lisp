@@ -217,17 +217,6 @@
     (error 'util:ffi-error :message "Cannot extract descriptors"))
   (values))
 
-(cffi:defcfun (%set-peak-threshold "sift3d_detector_set_peak_thresh") :int
-  (detector :pointer)
-  (thresh   :double))
-
-(serapeum:-> set-peak-threshold (detector (double-float 0d0 1d0))
-             (values &optional))
-(defun set-peak-threshold (detector threshold)
-  (unless (zerop (%set-peak-threshold (detector-pointer detector) threshold))
-    (error 'util:ffi-error :message "Cannot set the peak threshold"))
-  (values))
-
 ;; =========================
 ;; The ultimate WITH- macro
 ;; =========================
@@ -267,15 +256,12 @@
 (defconstant +max-keypoints+ 300000)
 
 ;; Now, high-level function for descriptor arrays
-(serapeum:-> descriptors ((util:image single-float) &optional (double-float 0d0 1d0))
+(serapeum:-> descriptors ((util:image single-float))
              (values (util:fixed-entries #.util:+descriptor-offset+)
                      (util:fixed-entries #.util:+descriptor-length+) &optional))
-(defun descriptors (array &optional (peak-threshold 1d-1))
+(defun descriptors (array)
   "Take an image (3D array of single-floats) and return an array of
-keypoint coordinates and their descriptors. The parameter
-@c(PEAK-THRESHOLD) controls a number of descriptors, with smaller
-value providing more descriptors. Providing a value lesser than the
-default results in a great number of unstable descriptors."
+keypoint coordinates and their descriptors."
   (with-sift3d-objects ((detector   detector)
                         ;; Here we call TRANSPOSE because Sift3D
                         ;; library accepts arrays in column-major
@@ -285,7 +271,6 @@ default results in a great number of unstable descriptors."
                         (kp-store   keypoint-store)
                         (desc-store descriptor-store)
                         (matrix     matrix))
-    (set-peak-threshold detector peak-threshold)
     (detect-keypoints detector image kp-store)
     (sort-keypoints-by-strength kp-store +max-keypoints+)
     (extract-descriptors detector kp-store desc-store)
