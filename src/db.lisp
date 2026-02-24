@@ -24,6 +24,19 @@
      digest (sb-ext:array-storage-vector array))
     (ironclad:produce-digest digest)))
 
+(serapeum:-> encode-floats ((simple-array single-float))
+             (values (simple-array (unsigned-byte 8) (*)) &optional))
+(defun encode-floats (array)
+  (let ((stream (fast-io:make-output-buffer)))
+    (conspack:encode-to-buffer array stream)
+    (fast-io:finish-output-buffer stream)))
+
+(serapeum:-> decode-floats ((simple-array (unsigned-byte 8) (*)))
+             (values (simple-array single-float) &optional))
+(defun decode-floats (octets)
+  (nth-value
+   0 (conspack:decode octets)))
+
 (serapeum:-> floats->ub8-vector ((simple-array single-float))
              (values (simple-array (unsigned-byte 8) (*)) &optional))
 (defun floats->ub8-vector (array)
@@ -57,8 +70,6 @@
          'string
          "create table if not exists descriptors ("
          "sha256 blob primary key, "
-         "nsamples integer not null, "
-         "features integer not null, "
          "means blob not null, "
          "vt    blob not null, "
          "pca   blob not null, "
@@ -88,19 +99,15 @@ descriptor components means."
     (ensure-directories-exist db-pathname)
     (sqlite:with-open-database (db (uiop:native-namestring db-pathname))
       (prepare-database db)
-      (multiple-value-bind (nsamples features means coord vt pca)
+      (multiple-value-bind (means coord vt pca)
           (sqlite:execute-one-row-m-v
-           db #.(concatenate 'string
-                             "select nsamples, features, means, coord, "
-                             "vt, pca from descriptors where sha256 = ?")
-           hash)
-        (if nsamples
-            ;; Descriptors are in the database, decompress them from PCA space
-            (let ((pca   (ub8-vector->floats pca   (list nsamples features)))
-                  (vt    (ub8-vector->floats vt    (list features util:+descriptor-length+)))
-                  (means (ub8-vector->floats means (list util:+descriptor-length+)))
-                  (coord (ub8-vector->floats coord (list nsamples util:+descriptor-offset+))))
-                (values coord pca vt means))
+           db "select means, coord, vt, pca from descriptors where sha256 = ?" hash)
+        (if means
+            ;; Descriptors are in the database, return them
+            (values (decode-floats coord)
+                    (decode-floats pca)
+                    (decode-floats vt)
+                    (decode-floats means))
             ;; else
             (multiple-value-bind (coords descr)
                 (sift3d:descriptors (pre:clahe array))
@@ -117,12 +124,11 @@ descriptor components means."
                         (sqlite:execute-non-query
                          db #.(concatenate 'string
                                            "insert into descriptors "
-                                           "(sha256, nsamples, features, "
-                                           "means, vt, pca, coord) "
-                                           "values (?, ?, ?, ?, ?, ?, ?, ?)")
-                         hash (array-dimension pca 0) (array-dimension pca 1)
-                         (floats->ub8-vector means)
-                         (floats->ub8-vector vt)
-                         (floats->ub8-vector pca)
-                         (floats->ub8-vector coords)))
+                                           "(sha256, means, vt, pca, coord) "
+                                           "values (?, ?, ?, ?, ?)")
+                         hash
+                         (encode-floats means)
+                         (encode-floats vt)
+                         (encode-floats pca)
+                         (encode-floats coords)))
                       (values coords pca vt means))))))))))

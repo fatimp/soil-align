@@ -13,3 +13,4 @@ ultralisp shamazmazum-vector-sum
 github sviridov/climp
 asdf 3.3.7
 ultralisp shamazmazum-entzauberte-matrices
+ql cl-conspack

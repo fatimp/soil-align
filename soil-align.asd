@@ -26,6 +26,7 @@
                :sqlite
                :vector-sum
                :climp
+               :cl-conspack
                (:feature :freebsd :freebsd-sysctl)
                :soil-align/pynndescent-so
                :soil-align/util
