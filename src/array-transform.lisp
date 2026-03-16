@@ -20,9 +20,9 @@
               tran:affine-transform
               list &key
               (:nthreads   alexandria:positive-fixnum)
-              (:background single-float))
+              (:background (unsigned-byte 8)))
              (values (util:image (unsigned-byte 8)) &optional))
-(defun apply-transform (array m shape &key (nthreads 1) (background 0.0))
+(defun apply-transform (array m shape &key (nthreads 1) (background 0))
   "Apply affine transform @c(M) (in the form of 4x4 matrix) to an
 image. The result has the shape @c(shape)."
   (declare (optimize (speed 3)))
@@ -35,8 +35,9 @@ image. The result has the shape @c(shape)."
               (round
                (util:interpolate
                 (lambda (i j k)
-                  (if (array-in-bounds-p array i j k)
-                      (float (aref array i j k)) background))
+                  (float
+                   (if (array-in-bounds-p array i j k)
+                      (aref array i j k) background)))
                 x y z
                 1 1 1)))))
     result))
