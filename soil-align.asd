@@ -59,6 +59,10 @@
                (:file "tests" :depends-on ("package")))
   :depends-on (:soil-align :fiveam :approx))
 
+;; For qlot
+(defsystem :soil-align/docs
+    :depends-on (:soil-align :codex))
+
 #+sb-core-compression
 (defmethod asdf:perform ((o asdf:image-op) (c asdf:system))
   (uiop:dump-image (asdf:output-file o c)

@@ -70,3 +70,19 @@
  (:class qlot/source/github:source-github
   :initargs (:repos "melisgl/named-readtables" :ref nil :branch nil :tag nil)
   :version "github-aa6dab55abff3cca26b976d9a105c2006ca0c3b6"))
+("fiveam" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2024-10-12"))
+("approx" .
+ (:class qlot/source/github:source-github
+  :initargs (:repos "shamazmazum/approx" :ref nil :branch nil :tag nil)
+  :version "github-fc8eee714d39c9a1cf69139cd9232b67b3c992e7"))
+("codex" .
+ (:class qlot/source/github:source-github
+  :initargs (:repos "shamazmazum/codex" :ref nil :branch nil :tag nil)
+  :version "github-67a554ffb78cc6f050ffc4d38a97777ed836db7e"))
+("docparser" .
+ (:class qlot/source/github:source-github
+  :initargs (:repos "shamazmazum/docparser" :ref nil :branch nil :tag nil)
+  :version "github-93a327d9e1c990fc6ec13251ffae119f3c168053"))
