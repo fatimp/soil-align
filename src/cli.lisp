@@ -49,6 +49,13 @@
     (t
      (error 'util:user-input-error :message "Unknown model"))))
 
+(defun parse-octet (string)
+  (let ((n (ignore-errors (parse-integer string))))
+    (unless (and n (<= 0 n 255))
+      (error 'util:user-input-error
+             :message "Background color must be an integer in the range 0..255"))
+    n))
+
 (defparameter *parser*
   (seq
    (optional
@@ -78,6 +85,11 @@
             :long        "model"
             :description "Model to fit (can be 'rigid' or 'rigid+scaling')"
             :fn          #'parse-model)
+    (option :background  "COLOR"
+            :long        "background-color"
+            :short       #\b
+            :description "Background color"
+            :fn          #'parse-octet)
     (option :dist-ratio  "C"
             :long        "dist-ratio"
             :description "Controls what we consider a match"
@@ -158,6 +170,7 @@
          (source         (%assoc :source           args))
          (workspace-side (%assoc :workspace-side   args))
          (ransac-iter    (%assoc :ransac-iter      args 5000))
+         (background     (%assoc :background       args 0))
          (nthreads       (%assoc :nthreads         args))
          (nthreads (number-of-threads nthreads))
          (db-pathname (get-db-pathname)))
@@ -220,7 +233,9 @@
                                  ;; Load a bigger image once more
                                  (numpy-npy:load-array (%assoc :source args))
                                  source)
-                             matrix ref-shape :nthreads nthreads)
+                             matrix ref-shape
+                             :nthreads   nthreads
+                             :background background)
                    trans-image))
                 (log:info #.(concatenate
                              'string
