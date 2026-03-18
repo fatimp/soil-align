@@ -147,9 +147,28 @@ is @c(NIL)."
                           (if (zerop scale) diff (/ diff scale)))))
     (values matrix center scale)))
 
-(serapeum:-> %rigid-transform-fit (boolean list)
+(deftype rotation-constraint () '(or null (integer 0 2)))
+
+(serapeum:-> maybe-constrain-rotation ((util:fixed-entries 3) rotation-constraint)
+             (values (util:fixed-entries 3) &optional))
+(defun maybe-constrain-rotation (m constraint)
+  (declare (optimize (speed 3)))
+  (if constraint
+      (let ((res (make-array '(3 3) :element-type 'single-float)))
+        (util:loop-array (res (i j))
+          (setf (aref res i j)
+                (cond
+                  ((= i j constraint) 1.0)
+                  ((or (= i constraint)
+                       (= j constraint))
+                   0.0)
+                  (t (aref m i j)))))
+        res)
+      m))
+
+(serapeum:-> %rigid-transform-fit (boolean rotation-constraint list)
              (values affine-transform &optional))
-(defun %rigid-transform-fit (scalingp matches)
+(defun %rigid-transform-fit (scalingp rotation-constraint matches)
   "Find a rigid transform which fits the matches. If @c(scalingp) is
 @c(T), the transform also includes uniform scaling."
   (declare (optimize (speed 3)))
@@ -158,7 +177,9 @@ is @c(NIL)."
     (serapeum:mvlet ((q c1 s1 (make-matrix scalingp q))
                      (p c2 s2 (make-matrix scalingp p)))
       (multiple-value-bind (u s vt)
-          (em:svd (em:mult p q :ta t))
+          (em:svd (maybe-constrain-rotation
+                   (em:mult p q :ta t)
+                   rotation-constraint))
         (declare (ignore s))
         (let* ((uvt (em:mult u vt))
                (rot (if (> (em:det uvt) 0) uvt
@@ -169,17 +190,17 @@ is @c(NIL)."
                 (em:invert (affine-uniform-scaling s1))
                 (em:invert (affine-translation c1))))))))
 
-(serapeum:-> rigid-transform-fit (list)
-             (values affine-transform &optional))
-(defun rigid-transform-fit (matches)
-  "Find a rigid transform which fits the matches."
-  (%rigid-transform-fit nil matches))
-
-(serapeum:-> rigid+scaling-transform-fit (list)
-             (values affine-transform &optional))
-(defun rigid+scaling-transform-fit (matches)
-  "Find a rigid+scaling transform which fits the matches."
-  (%rigid-transform-fit t matches))
+(serapeum:-> rigid-transform-fit (&optional boolean rotation-constraint)
+             (values (serapeum:-> (list) (values affine-transform &optional)) &optional))
+(defun rigid-transform-fit (&optional scalingp rotation-constraint)
+  "Return a function which finds a rigid transform which fits the
+matches. The parameter @c(rotation-constraint) controls what rotations
+are allowed and can be @(nil) or a number 0, 1 or 2. If it's @c(nil)
+rotation is unconstrained. If it's a number, only rotation around that
+axis is allowed. The parameter @c(scaling), if non-@c(nil), also
+enables uniform scaling of the coordinates."
+  (lambda (matches)
+    (%rigid-transform-fit scalingp rotation-constraint matches)))
 
 (serapeum:-> to-affine-vector (coordinate)
              (values (simple-array single-float (4)) &optional))

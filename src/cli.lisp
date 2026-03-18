@@ -43,9 +43,15 @@
 (defun parse-model (string)
   (cond
     ((string= string "rigid")
-     #'trans:rigid-transform-fit)
+     (trans:rigid-transform-fit))
+    ((string= string "rigid/0")
+     (trans:rigid-transform-fit nil 0))
+    ((string= string "rigid/1")
+     (trans:rigid-transform-fit nil 1))
+    ((string= string "rigid/2")
+     (trans:rigid-transform-fit nil 2))
     ((string= string "rigid+scaling")
-     #'trans:rigid+scaling-transform-fit)
+     (trans:rigid-transform-fit t))
     (t
      (error 'util:user-input-error :message "Unknown model"))))
 
@@ -83,7 +89,7 @@
             :description "Output file name for a transformed image (.npy or .raw)")
     (option :model       "MODEL"
             :long        "model"
-            :description "Model to fit (can be 'rigid' or 'rigid+scaling')"
+            :description "Model to fit (see below)"
             :fn          #'parse-model)
     (option :background  "COLOR"
             :long        "background-color"
@@ -165,7 +171,7 @@
          (fit-error      (%assoc :fit-error        args 100.0))
          (trans-image    (%assoc :output           args))
          (trans-matrix   (%assoc :transform-output args))
-         (model          (%assoc :model            args #'trans:rigid-transform-fit))
+         (model          (%assoc :model            args (trans:rigid-transform-fit)))
          (reference      (%assoc :reference        args))
          (source         (%assoc :source           args))
          (workspace-side (%assoc :workspace-side   args))
@@ -252,10 +258,20 @@
 (defun handle-error (c)
   (princ c *error-output*)
   (terpri *error-output*)
-  (if (typep c '(and (or util:internal-error (not util:generic-error))
-                     (not foreign-user-input-error)))
-      (sb-debug:backtrace 20 *error-output*)
-      (print-usage *parser* "soil-align"))
+  (cond
+    ((typep c '(and (or util:internal-error (not util:generic-error))
+                (not foreign-user-input-error)))
+     (sb-debug:backtrace 20 *error-output*))
+    (t
+      (print-usage *parser* "soil-align")
+      (format *error-output*
+              #.(concatenate
+                 'string
+                 "~%Supported models:~%"
+                 "'rigid'                        — rotation around 3 axes + translation~%"
+                 "'rigid/i', where i = 0, 1, 2   — rotation around one specific axis + "
+                 "translation~%"
+                 "'rigid+scaling'                — rigid transform + uniform scaling~%"))))
   (uiop:quit 1))
 
 (defun main ()
