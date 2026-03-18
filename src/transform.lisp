@@ -6,7 +6,10 @@
   (:export #:rigid-transform-fit
            #:rigid+scaling-transform-fit
            #:ransac
-           #:affine-transform))
+           #:affine-transform
+           #:affine-rotation
+           #:affine-translation
+           #:affine-uniform-scaling))
 (in-package :soil-align/transform)
 
 (deftype coordinate       () '(simple-array single-float (3)))
