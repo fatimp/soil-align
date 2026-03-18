@@ -35,8 +35,8 @@
     (if override (pathname override) +db-pathname+)))
 
 (defun parse-dist-ratio (string)
-  (let ((x (parse-float string)))
-    (unless (>= x 1)
+  (let ((x (ignore-errors (parse-float string))))
+    (unless (and x (>= x 1))
       (error 'util:user-input-error :message "The distance ratio must be bigger than 1"))
     x))
 
