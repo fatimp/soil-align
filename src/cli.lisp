@@ -40,20 +40,11 @@
       (error 'util:user-input-error :message "The distance ratio must be bigger than 1"))
     x))
 
-(defun parse-model (string)
-  (cond
-    ((string= string "rigid")
-     (trans:rigid-transform-fit))
-    ((string= string "rigid/0")
-     (trans:rigid-transform-fit nil 0))
-    ((string= string "rigid/1")
-     (trans:rigid-transform-fit nil 1))
-    ((string= string "rigid/2")
-     (trans:rigid-transform-fit nil 2))
-    ((string= string "rigid+scaling")
-     (trans:rigid-transform-fit t))
-    (t
-     (error 'util:user-input-error :message "Unknown model"))))
+(defun parse-constraint (string)
+  (let ((ax (ignore-errors (parse-integer string))))
+    (unless (and ax (<= 0 ax 2))
+      (error 'util:user-input-error :message "The constraint can be 0, 1 or 2"))
+    ax))
 
 (defun parse-octet (string)
   (let ((n (ignore-errors (parse-integer string))))
@@ -87,10 +78,14 @@
             :short       #\o
             :long        "output"
             :description "Output file name for a transformed image (.npy or .raw)")
-    (option :model       "MODEL"
-            :long        "model"
-            :description "Model to fit (see below)"
-            :fn          #'parse-model)
+    (option :constraint  "AXIS"
+            :long        "rotation-constraint"
+            :description "Constrain rotation to be around only one axis (0, 1 or 2)"
+            :fn          #'parse-constraint)
+    (flag   :scaling
+            :short       #\s
+            :long        "scaling"
+            :description "Add uniform scaling to the model")
     (option :background  "COLOR"
             :long        "background-color"
             :short       #\b
@@ -171,7 +166,8 @@
          (fit-error      (%assoc :fit-error        args 100.0))
          (trans-image    (%assoc :output           args))
          (trans-matrix   (%assoc :transform-output args))
-         (model          (%assoc :model            args (trans:rigid-transform-fit)))
+         (scalingp       (%assoc :scaling          args))
+         (rot-constraint (%assoc :constraint       args))
          (reference      (%assoc :reference        args))
          (source         (%assoc :source           args))
          (workspace-side (%assoc :workspace-side   args))
@@ -218,7 +214,8 @@
                       ref-desc source-desc dist-ratio)))
               (log:info "Found matches between images")
               (multiple-value-bind (matrix error inliers)
-                  (trans:ransac model matches
+                  (trans:ransac (trans:rigid-transform-fit scalingp rot-constraint)
+                                matches
                                 :max-iter ransac-iter
                                 :err      fit-error)
                 (unless matrix
@@ -258,20 +255,10 @@
 (defun handle-error (c)
   (princ c *error-output*)
   (terpri *error-output*)
-  (cond
-    ((typep c '(and (or util:internal-error (not util:generic-error))
-                (not foreign-user-input-error)))
-     (sb-debug:backtrace 20 *error-output*))
-    (t
-      (print-usage *parser* "soil-align")
-      (format *error-output*
-              #.(concatenate
-                 'string
-                 "~%Supported models:~%"
-                 "'rigid'                        — rotation around 3 axes + translation~%"
-                 "'rigid/i', where i = 0, 1, 2   — rotation around one specific axis + "
-                 "translation~%"
-                 "'rigid+scaling'                — rigid transform + uniform scaling~%"))))
+  (if (typep c '(and (or util:internal-error (not util:generic-error))
+                 (not foreign-user-input-error)))
+      (sb-debug:backtrace 20 *error-output*)
+      (print-usage *parser* "soil-align"))
   (uiop:quit 1))
 
 (defun main ()
