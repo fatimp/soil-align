@@ -1,5 +1,17 @@
 # Changelog
 
+## Version 0.8
+
+* Incompatible change: `--min-dog` parameter was removed from the command line
+  tool. The default value suffices for all cases.
+* Incompatible change: SQLite database was replaced by LMDB. Users should delete
+  stale files by themselves.
+* Incompatible change: `--model` parameter was removed (see below).
+* Improvement: Add an option `-b` to control background intensity in the output.
+* Improvement: Rotation in the rigid transform model can be constrained.
+* Improvement: Add `-s` flag and `--rotation-constraint` option to the CLI to
+  provide a fine-grained control of the model's constraints.
+
 ## Version 0.7
 
 * Improvement: Log dimensionality of the compressed descriptor space.
