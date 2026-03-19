@@ -301,15 +301,15 @@ previous step."
           (values t fit err n))))))
 
 (serapeum:-> ransac (fit-function list &key
-                     (:max-iter    alexandria:positive-fixnum)
+                     (:iterations  alexandria:positive-fixnum)
                      (:seed-points alexandria:positive-fixnum)
                      (:err         (single-float 0f0)))
              (values (or null affine-transform)
                      single-float alexandria:positive-fixnum &optional))
-(defun ransac (f matches &key (max-iter 500) (seed-points 15) (err 100f0))
+(defun ransac (f matches &key (iterations 500) (seed-points 15) (err 100f0))
     "Find an affine transform which transforms the first keypoint in
 each pair of matches to the second keypoint. Keypoint parameters are
-related to the RANSAC algorithm: @c(MAX-ITER) is the maximal number of
+related to the RANSAC algorithm: @c(ITERATIONS) is the number of
 iterations, @c(SEED-POINTS) is an initial number of points to make a
 fit. A point is well-fit if \\(\\| y - Ax \\|\\) is less than @c(ERR),
 (\\(A\\) is a candidate for the found fit). The function @c(F) fits a
@@ -329,4 +329,4 @@ translation, etc.)."
     (let ((initial-error ff:single-float-positive-infinity))
       (if (< (length matches) seed-points)
           (values nil initial-error 1)
-          (%go    nil initial-error 1 max-iter)))))
+          (%go    nil initial-error 1 iterations)))))
