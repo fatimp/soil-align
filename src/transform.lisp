@@ -4,7 +4,6 @@
                     (#:em   #:entzauberte-matrices)
                     (#:util #:soil-align/util))
   (:export #:rigid-transform-fit
-           #:rigid+scaling-transform-fit
            #:ransac
            #:affine-transform
            #:affine-rotation
@@ -195,7 +194,7 @@ is @c(NIL)."
 (defun rigid-transform-fit (&optional scalingp rotation-constraint)
   "Return a function which finds a rigid transform which fits the
 matches. The parameter @c(rotation-constraint) controls what rotations
-are allowed and can be @(nil) or a number 0, 1 or 2. If it's @c(nil)
+are allowed and can be @c(nil) or a number 0, 1 or 2. If it's @c(nil)
 rotation is unconstrained. If it's a number, only rotation around that
 axis is allowed. The parameter @c(scaling), if non-@c(nil), also
 enables uniform scaling of the coordinates."

@@ -13,6 +13,7 @@
      @item(@link[uri="https://pypi.org/project/pynndescent"](pynndescent))
      @item(SBCL (другая реализация CL не подойдёт))
      @item(OpenBLAS)
+     @item(LMDB)
    @end(list)
 
    Как установить:
@@ -45,22 +46,26 @@
    Утилита командной строки имеет следующий интерфейс (выводится при запуске без
    аргументов):
    @begin(code)
-Abrupt ending of the input: argument #<ARGUMENT {1100429C63}> missing
+Abrupt ending of the input: argument #<ARGUMENT {1100444043}> missing
 Usage: soil-align [-v|--verbose] [-t|--threads N] [-w|--workspace-side S]
-                  [-m|--matrix m.npy] [-o|--image out.npy] [--min-dog P]
-                  [--dist-ratio C] [--fit-error E] [--min-inliers N]
+                  [-O|--transform-output m.npy] [-o|--output out.npy]
+                  [--rotation-constraint AXIS] [-s|--scaling]
+                  [-b|--background-color COLOR] [--dist-ratio C]
+                  [--fit-error E] [--ransac-iterations M]
                   reference source
 
 Description of flags and options
---min-inliers N           A fraction of inliers to accept a fit [0-1]
---fit-error E             The maximal allowed fit error to treat a sample as inlier
---dist-ratio C            Controls what we consider a match
---min-dog P               The smallest allowed absolute DoG value, as a fraction of the largest
--o|--image out.npy        Output file name for a transformed image (.npy or .raw)
--m|--matrix m.npy         Output file name for a transform matrix (.npy)
--w|--workspace-side S     Side of a workspace which is cut from center of the input images
--t|--threads N            Number of threads to use
--v|--verbose              Be verbose
+--ransac-iterations M           Number of RANSAC iterations
+--fit-error E                   The maximal allowed fit error to treat a sample as inlier
+--dist-ratio C                  Controls what we consider a match
+-b|--background-color COLOR     Background color
+-s|--scaling                    Add uniform scaling to the model
+--rotation-constraint AXIS      Constrain rotation to be around only one axis (0, 1 or 2)
+-o|--output out.npy             Output file name for a transformed image (.npy or .raw)
+-O|--transform-output m.npy     Output file name for a transform matrix (.npy)
+-w|--workspace-side S           Side of a workspace which is cut from center of the input images
+-t|--threads N                  Number of threads to use
+-v|--verbose                    Be verbose
    @end(code)
 
    Два обязательных аргумента @c(reference) и @c(source) — это два входных
@@ -73,7 +78,10 @@ Description of flags and options
    входных массивов должен быть @c(uint8). Опция @c(-w) позволяет вырезать
    область из центра входных массивов и искать ключевые точки в ней, применяя
    потом найденное преобразование на весь исходный массив, таким образом экономя
-   время и память. Остальные опции относятся к настройкам алгоритмов 3D SIFT и
+   время и память. Параметры @c(-s) и @c(-r) управляют тем, какая модель будет
+   использована для поиска преобразования. Флаг @c(-s) включает поиск
+   коэффициента масштабирования, а @c(-r) позволяет ограничить вращение одной из
+   осей. Остальные опции относятся к настройкам алгоритмов 3D SIFT и
    RANSAC. Рекомендуется обратиться к литературе для понимания их значения.
 
    Для работы с raw форматом (не рекомендуется!) нужно создать файл метаданных с
@@ -92,10 +100,10 @@ Description of flags and options
    метаданных не нужен.
 
    Soil-align использует базу данных для сохранения дескрипторов. По умолнчанию
-   база сохраняется в @c(~/.local/share/soil-align/descriptors.sqlite), но путь
-   до базы может быть переназначен переменной окружения @c(SOIL_ALIGN_DB). В
-   данный момент база занимает довольно значительный объём, и рекомендуется
-   вручную удалять её после окончания работы с датасетом.
+   база сохраняется в директории @c(~/.local/share/soil-align/), но путь до базы
+   может быть переназначен переменной окружения @c(SOIL_ALIGN_DB). В данный
+   момент база занимает довольно значительный объём, и рекомендуется вручную
+   удалять её после окончания работы с датасетом.
 @end(section)
 
 @begin(section)
@@ -130,7 +138,6 @@ Description of flags and options
   Пакет @c(soil-align/transform):
   @cl:with-package[name="soil-align/transform"](
     @cl:doc(function rigid-transform-fit)
-    @cl:doc(function rigid+scaling-transform-fit)
     @cl:doc(function ransac)
   )
 
