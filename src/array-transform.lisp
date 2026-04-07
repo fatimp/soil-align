@@ -19,16 +19,15 @@
              ((util:image (unsigned-byte 8))
               tran:affine-transform
               list &key
-              (:nthreads   alexandria:positive-fixnum)
               (:background (unsigned-byte 8)))
              (values (util:image (unsigned-byte 8)) &optional))
-(defun apply-transform (array m shape &key (nthreads 1) (background 0))
+(defun apply-transform (array m shape &key (background 0))
   "Apply affine transform @c(M) (in the form of 4x4 matrix) to an
 image. The result has the shape @c(shape)."
   (declare (optimize (speed 3)))
   (let ((result (make-array shape :element-type '(unsigned-byte 8))))
     (declare (type (util:image (unsigned-byte 8)) result))
-    (util:loop-array (result (i j k) :nthreads nthreads)
+    (util:loop-array (result (i j k) :parallel)
       (multiple-value-bind (x y z)
           (apply-transform-xs m (float i) (float j) (float k))
         (setf (aref result i j k)

@@ -25,7 +25,7 @@
                :ironclad
                :lmdb
                :vector-sum
-               :climp
+               :lparallel
                :cl-conspack
                (:feature :freebsd :freebsd-sysctl)
                :soil-align/pynndescent-so

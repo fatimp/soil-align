@@ -46,10 +46,6 @@
  (:class qlot/source/ultralisp:source-ultralisp
   :initargs (:%version :latest)
   :version "ultralisp-20260114095500"))
-("climp" .
- (:class qlot/source/github:source-github
-  :initargs (:repos "sviridov/climp" :ref nil :branch nil :tag nil)
-  :version "github-82d65eb63c43c277428a86ca324c091efe2b7f90"))
 ("asdf" .
  (:class qlot/source/asdf:source-asdf
   :initargs (:version "3.3.7")
@@ -86,3 +82,7 @@
  (:class qlot/source/github:source-github
   :initargs (:repos "shamazmazum/docparser" :ref nil :branch nil :tag nil)
   :version "github-93a327d9e1c990fc6ec13251ffae119f3c168053"))
+("lparallel" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2016-08-25"))

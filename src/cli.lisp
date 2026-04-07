@@ -192,6 +192,7 @@
         (log:info "Starting")
         (log:info "Will use ~d threads" nthreads)
         (em:set-num-threads nthreads)
+        (setq lparallel:*kernel* (lparallel:make-kernel nthreads))
         (with-pynndescent
           (serapeum:mvlet ((source-kp source-desc-pca source-vt source-means
                                       (log-eval "Got descriptors of the source image"
@@ -236,9 +237,7 @@
                                  ;; Load a bigger image once more
                                  (numpy-npy:load-array (%assoc :source args))
                                  source)
-                             matrix ref-shape
-                             :nthreads   nthreads
-                             :background background)
+                             matrix ref-shape :background background)
                    trans-image))
                 (log:info #.(concatenate
                              'string
