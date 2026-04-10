@@ -10,7 +10,7 @@
    Зависимости:
    @begin(list)
      @item(@link[uri="https://github.com/fatimp/SIFT3D"](SIFT3D) версия 2.0+)
-     @item(scikit-learn)
+     @item(faiss (принадлежит компании Meta, признанной в РФ экстремистской организацией))
      @item(SBCL (другая реализация CL не подойдёт))
      @item(OpenBLAS)
      @item(LMDB)

@@ -186,62 +186,60 @@
         (log:info "Will use ~d threads" nthreads)
         (em:set-num-threads nthreads)
         (setq lparallel:*kernel* (lparallel:make-kernel nthreads))
-        (match:with-nn
-          (serapeum:mvlet ((source-kp source-desc-pca source-vt source-means
-                                      (log-eval "Got descriptors of the source image"
-                                                #'db:descriptors-cached source
-                                                db-pathname))
-                           (ref-kp    ref-desc-pca ref-vt ref-means
-                                      (log-eval "Got descriptors of the reference image"
-                                                #'db:descriptors-cached reference
-                                                db-pathname)))
-            ;; Convert descriptors in ref PCA space
-            (let* ((ref-desc ref-desc-pca)
-                   (source-desc (pca:transform-pca
-                                 (pca:invert-pca source-desc-pca source-vt source-means)
-                                 ref-vt ref-means))
-                   ;; Find matches between descriptors
-                   (matches
-                     (match:match-descriptors
-                      (add-offsets! rx ry rz ref-kp)
-                      (add-offsets! sx sy sz source-kp)
-                      ref-desc source-desc
-                      :c dist-ratio :njobs nthreads)))
-              (log:info "Found matches between images")
-              (multiple-value-bind (matrix error inliers)
-                  (trans:ransac (trans:rigid-transform-fit scalingp rot-constraint)
-                                matches
-                                :iterations ransac-iter
-                                :err        fit-error)
-                (unless matrix
-                  (log:info "Summary: ~d/~d descriptors, ~d matches"
-                            (array-dimension source-kp 0)
-                            (array-dimension ref-kp 0)
-                            (length matches))
-                  (log:error "Consensus is not achieved")
-                  (uiop:quit 0))
-                (log:info "Found a transform matrix")
-                (when trans-matrix
-                  (numpy-npy:store-array matrix trans-matrix))
-                (when trans-image
-                  (io:write-image
-                   (log-eval "Computed a transformed image"
-                             #'atrans:apply-transform
-                             (if workspace-side
-                                 ;; Load a bigger image once more
-                                 (numpy-npy:load-array (%assoc :source args))
-                                 source)
-                             matrix ref-shape :background background)
-                   trans-image))
-                (log:info #.(concatenate
-                             'string
-                             "Summary: ~d/~d descriptors, ~d independent parameters, "
-                             "~d matches, ~d inliers, ~f fit error")
+        (serapeum:mvlet ((source-kp source-desc-pca source-vt source-means
+                                    (log-eval "Got descriptors of the source image"
+                                              #'db:descriptors-cached source
+                                              db-pathname))
+                         (ref-kp    ref-desc-pca ref-vt ref-means
+                                    (log-eval "Got descriptors of the reference image"
+                                              #'db:descriptors-cached reference
+                                              db-pathname)))
+          ;; Convert descriptors in ref PCA space
+          (let* ((ref-desc ref-desc-pca)
+                 (source-desc (pca:transform-pca
+                               (pca:invert-pca source-desc-pca source-vt source-means)
+                               ref-vt ref-means))
+                 ;; Find matches between descriptors
+                 (matches
+                   (match:match-descriptors
+                    (add-offsets! rx ry rz ref-kp)
+                    (add-offsets! sx sy sz source-kp)
+                    ref-desc source-desc dist-ratio)))
+            (log:info "Found matches between images")
+            (multiple-value-bind (matrix error inliers)
+                (trans:ransac (trans:rigid-transform-fit scalingp rot-constraint)
+                              matches
+                              :iterations ransac-iter
+                              :err        fit-error)
+              (unless matrix
+                (log:info "Summary: ~d/~d descriptors, ~d matches"
                           (array-dimension source-kp 0)
                           (array-dimension ref-kp 0)
-                          (array-dimension ref-desc 1)
-                          (length matches)
-                          inliers error)))))))))
+                          (length matches))
+                (log:error "Consensus is not achieved")
+                (uiop:quit 0))
+              (log:info "Found a transform matrix")
+              (when trans-matrix
+                (numpy-npy:store-array matrix trans-matrix))
+              (when trans-image
+                (io:write-image
+                 (log-eval "Computed a transformed image"
+                           #'atrans:apply-transform
+                           (if workspace-side
+                               ;; Load a bigger image once more
+                               (numpy-npy:load-array (%assoc :source args))
+                               source)
+                           matrix ref-shape :background background)
+                 trans-image))
+              (log:info #.(concatenate
+                           'string
+                           "Summary: ~d/~d descriptors, ~d independent parameters, "
+                           "~d matches, ~d inliers, ~f fit error")
+                        (array-dimension source-kp 0)
+                        (array-dimension ref-kp 0)
+                        (array-dimension ref-desc 1)
+                        (length matches)
+                        inliers error))))))))
 
 (deftype foreign-user-input-error () '(or cmd-line-parse-error))
 

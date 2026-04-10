@@ -1,7 +1,6 @@
-(defsystem :pywrapper
-  :name :pywrapper
+(defsystem :cpp-wrapper
+  :name :cpp-wrapper
   :version "0.1"
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :description "Building facility for soil-align"
-  :components ((:file "build"))
-  :depends-on (:cl-ppcre))
+  :components ((:file "build")))

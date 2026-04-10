@@ -1,8 +1,8 @@
 (defsystem soil-align/libnn-so
   :name :soil-align/libnn-so
-  :defsystem-depends-on (:pywrapper)
+  :defsystem-depends-on (:cpp-wrapper)
   :pathname "src"
-  :components ((:pywrapper "libnn")))
+  :components ((:cpp-wrapper "libnn")))
 
 (defsystem :soil-align
   :name :soil-align
