@@ -106,13 +106,6 @@
    (argument :reference "reference")
    (argument :source    "source")))
 
-(defmacro with-pynndescent (&body body)
-  `(progn
-     (match:nndescent-initialize)
-     (unwind-protect
-          (progn ,@body)
-       (match:nndescent-deinitialize))))
-
 (declaim (inline log-eval))
 (defun log-eval (message f &rest args)
   (let ((list (multiple-value-list (apply f args))))
@@ -193,7 +186,7 @@
         (log:info "Will use ~d threads" nthreads)
         (em:set-num-threads nthreads)
         (setq lparallel:*kernel* (lparallel:make-kernel nthreads))
-        (with-pynndescent
+        (match:with-nn
           (serapeum:mvlet ((source-kp source-desc-pca source-vt source-means
                                       (log-eval "Got descriptors of the source image"
                                                 #'db:descriptors-cached source
@@ -212,7 +205,8 @@
                      (match:match-descriptors
                       (add-offsets! rx ry rz ref-kp)
                       (add-offsets! sx sy sz source-kp)
-                      ref-desc source-desc dist-ratio)))
+                      ref-desc source-desc
+                      :c dist-ratio :njobs nthreads)))
               (log:info "Found matches between images")
               (multiple-value-bind (matrix error inliers)
                   (trans:ransac (trans:rigid-transform-fit scalingp rot-constraint)

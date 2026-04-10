@@ -1,8 +1,8 @@
-(defsystem soil-align/pynndescent-so
-  :name :soil-align/pynndescent-so
+(defsystem soil-align/libnn-so
+  :name :soil-align/libnn-so
   :defsystem-depends-on (:pywrapper)
   :pathname "src"
-  :components ((:pywrapper "libpynndescent-wrapper")))
+  :components ((:pywrapper "libnn")))
 
 (defsystem :soil-align
   :name :soil-align
@@ -28,7 +28,7 @@
                :lparallel
                :cl-conspack
                (:feature :freebsd :freebsd-sysctl)
-               :soil-align/pynndescent-so
+               :soil-align/libnn-so
                :soil-align/util
                :soil-align/preprocessing
                :soil-align/pca
