@@ -186,25 +186,25 @@
         (log:info "Will use ~d threads" nthreads)
         (em:set-num-threads nthreads)
         (setq lparallel:*kernel* (lparallel:make-kernel nthreads))
-        (serapeum:mvlet ((source-kp source-desc-pca source-vt source-means
-                                    (log-eval "Got descriptors of the source image"
-                                              #'db:descriptors-cached source
-                                              db-pathname))
-                         (ref-kp    ref-desc-pca ref-vt ref-means
-                                    (log-eval "Got descriptors of the reference image"
-                                              #'db:descriptors-cached reference
-                                              db-pathname)))
-          ;; Convert descriptors in ref PCA space
-          (let* ((ref-desc ref-desc-pca)
-                 (source-desc (pca:transform-pca
-                               (pca:invert-pca source-desc-pca source-vt source-means)
-                               ref-vt ref-means))
-                 ;; Find matches between descriptors
-                 (matches
-                   (match:match-descriptors
-                    (add-offsets! rx ry rz ref-kp)
-                    (add-offsets! sx sy sz source-kp)
-                    ref-desc source-desc dist-ratio)))
+        (serapeum:mvlet* ((src-kp src-desc-pca src-vt src-means
+                                  (log-eval "Got descriptors of the source image"
+                                            #'db:descriptors-cached source
+                                            db-pathname))
+                          (ref-kp ref-desc-pca ref-vt ref-means
+                                  (log-eval "Got descriptors of the reference image"
+                                            #'db:descriptors-cached reference
+                                            db-pathname))
+                          ;; Convert descriptors in one PCA space
+                          (ref-desc src-desc
+                                    (pca:restore-descriptors
+                                     ref-desc-pca ref-vt ref-means
+                                     src-desc-pca src-vt src-means)))
+          ;; Find matches between descriptors
+          (let ((matches
+                  (match:match-descriptors
+                   (add-offsets! rx ry rz ref-kp)
+                   (add-offsets! sx sy sz src-kp)
+                   ref-desc src-desc dist-ratio)))
             (log:info "Found matches between images")
             (let ((fit (trans:ransac (trans:rigid-transform-fit scalingp rot-constraint)
                                      matches
@@ -212,7 +212,7 @@
                                      :err        fit-error)))
               (unless fit
                 (log:info "Summary: ~d/~d descriptors, ~d matches"
-                          (array-dimension source-kp 0)
+                          (array-dimension src-kp 0)
                           (array-dimension ref-kp 0)
                           (length matches))
                 (log:error "Consensus is not achieved")
@@ -235,7 +235,7 @@
                            'string
                            "Summary: ~d/~d descriptors, ~d independent parameters, "
                            "~d matches, ~d inliers, ~f fit error")
-                        (array-dimension source-kp 0)
+                        (array-dimension src-kp 0)
                         (array-dimension ref-kp 0)
                         (array-dimension ref-desc 1)
                         (length matches)

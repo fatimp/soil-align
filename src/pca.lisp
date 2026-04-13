@@ -4,7 +4,8 @@
                     (#:em   #:entzauberte-matrices))
   (:export #:fit-pca
            #:transform-pca
-           #:invert-pca))
+           #:invert-pca
+           #:restore-descriptors))
 (in-package :soil-align/pca)
 
 (serapeum:-> means ((util:fixed-entries #.util:+descriptor-length+))
@@ -107,3 +108,20 @@ a PCA space of lesser dimensionality. The parameter
   "This is a (lossy) inversion of @c(TRANSFORM-PCA), i.e. it convects
 vectors in the PCA space back into the descriptor space."
   (op-means (em:mult pca vt) means :add))
+
+(serapeum:-> restore-descriptors ((simple-array single-float (* *))
+                                  (util:fixed-entries #.util:+descriptor-length+)
+                                  (simple-array single-float (#.util:+descriptor-length+))
+                                  (simple-array single-float (* *))
+                                  (util:fixed-entries #.util:+descriptor-length+)
+                                  (simple-array single-float (#.util:+descriptor-length+)))
+             (values (simple-array single-float (* *))
+                     (simple-array single-float (* *))
+                     &optional))
+(defun restore-descriptors (d1 vt1 means1 d2 vt2 means2)
+  "Convert two sets of descriptors to the same PCA space (one with
+bigger dimensionality)."
+  (if (> (array-dimension d1 1)
+         (array-dimension d2 1))
+      (values d1 (transform-pca (invert-pca d2 vt2 means2) vt1 means1))
+      (values    (transform-pca (invert-pca d1 vt1 means1) vt2 means2) d2)))
