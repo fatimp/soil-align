@@ -206,12 +206,11 @@
                     (add-offsets! sx sy sz source-kp)
                     ref-desc source-desc dist-ratio)))
             (log:info "Found matches between images")
-            (multiple-value-bind (matrix error inliers)
-                (trans:ransac (trans:rigid-transform-fit scalingp rot-constraint)
-                              matches
-                              :iterations ransac-iter
-                              :err        fit-error)
-              (unless matrix
+            (let ((fit (trans:ransac (trans:rigid-transform-fit scalingp rot-constraint)
+                                     matches
+                                     :iterations ransac-iter
+                                     :err        fit-error)))
+              (unless fit
                 (log:info "Summary: ~d/~d descriptors, ~d matches"
                           (array-dimension source-kp 0)
                           (array-dimension ref-kp 0)
@@ -220,7 +219,7 @@
                 (uiop:quit 0))
               (log:info "Found a transform matrix")
               (when trans-matrix
-                (numpy-npy:store-array matrix trans-matrix))
+                (numpy-npy:store-array (trans:ransac-result-transform fit) trans-matrix))
               (when trans-image
                 (io:write-image
                  (log-eval "Computed a transformed image"
@@ -229,7 +228,8 @@
                                ;; Load a bigger image once more
                                (numpy-npy:load-array (%assoc :source args))
                                source)
-                           matrix ref-shape :background background)
+                           (trans:ransac-result-transform fit) ref-shape
+                           :background background)
                  trans-image))
               (log:info #.(concatenate
                            'string
@@ -239,7 +239,8 @@
                         (array-dimension ref-kp 0)
                         (array-dimension ref-desc 1)
                         (length matches)
-                        inliers error))))))))
+                        (trans:ransac-result-inliers fit)
+                        (trans:ransac-result-error   fit)))))))))
 
 (deftype foreign-user-input-error () '(or cmd-line-parse-error))
 

@@ -60,8 +60,9 @@
                                     v translation)))
                      inliers))
            (all-together (append inliers outliers))
-           (transform (tran:ransac (tran:rigid-transform-fit) all-together
-                                   :iterations 400 :err 2.0)))
+           (transform (tran:ransac-result-transform
+                       (tran:ransac (tran:rigid-transform-fit) all-together
+                                    :iterations 400 :err 2.0))))
       (loop for i below 3 do
         (is-true
          (approxp (aref transform i 3)

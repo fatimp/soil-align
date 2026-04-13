@@ -5,6 +5,10 @@
                     (#:util #:soil-align/util))
   (:export #:rigid-transform-fit
            #:ransac
+           #:ransac-result
+           #:ransac-result-transform
+           #:ransac-result-error
+           #:ransac-result-inliers
            #:affine-transform
            #:affine-rotation
            #:affine-translation
@@ -267,45 +271,41 @@ without repetitions."
                   (%go (cdr list) indices acc (1+ i))))))
       (%go list indices nil 0))))
 
+(serapeum:defconstructor ransac-result
+  (transform affine-transform)
+  (error     (single-float 0f0))
+  (inliers   alexandria:positive-fixnum))
+
 (serapeum:-> ransac-iteration (fit-function list
                                alexandria:positive-fixnum
-                               alexandria:positive-fixnum
-                               (single-float 0f0)
                                (single-float 0f0))
-             (values boolean &optional
-                     affine-transform
-                     (single-float 0f0)
-                     alexandria:positive-fixnum))
-(defun ransac-iteration (f matches k ninliers ε prev-error)
+             (values (or ransac-result null) &optional))
+(defun ransac-iteration (f matches k ε)
   "Perform one iteration of RANSAC fit, namely find a linear model ΒS
 so that ΒS(XS) fits YS. K is the number of points to find an initial
-fit. NINLIERS is the number of inliers which is necassary to treat the
-model as good. ε is a criterion for being an inlier, namely |Y -
-ΒS(X)| must be less that ε. PREV-ERROR is the fit error from the
-previous step."
+fit. ε is a criterion for being an inlier, namely |Y - ΒS(X)| must be
+less that ε."
+  (declare (optimize (speed 3)))
   (let* ((length (length matches))
          (indices (random-integers k length))
          (subset (select-entries matches indices))
          (fit (funcall f subset))
          (inliers
-          (loop for match in matches
-                for err = (match-fit-error fit match)
-                when (< err ε)
-                collect match)))
+           (loop for match in matches
+                 for err = (match-fit-error fit match)
+                 when (< err ε)
+                   collect match)))
     (when inliers
       (let* ((fit (funcall f inliers))
              (err (fit-error fit inliers))
              (n (length inliers)))
-        (when (or (> n ninliers)
-                  (and (= n ninliers) (< err prev-error)))
-          (values t fit err n))))))
+        (ransac-result fit err n)))))
 
 (serapeum:-> ransac (fit-function list &key
                      (:iterations  alexandria:positive-fixnum)
                      (:seed-points alexandria:positive-fixnum)
                      (:err         (single-float 0f0)))
-             (values (or null affine-transform)
-                     single-float alexandria:positive-fixnum &optional))
+             (values (or null ransac-result) &optional))
 (defun ransac (f matches &key (iterations 500) (seed-points 15) (err 100f0))
     "Find an affine transform which transforms the first keypoint in
 each pair of matches to the second keypoint. Keypoint parameters are
@@ -316,17 +316,20 @@ fit. A point is well-fit if \\(\\| y - Ax \\|\\) is less than @c(ERR),
 subset of @c(MATCHES) and controls the type of transform (e.g. rigid,
 translation, etc.)."
   (declare (optimize (speed 3)))
-  (labels ((%go (best-fit best-err best-inliers n)
-             (declare (type alexandria:non-negative-fixnum n))
-             (if (zerop n)
-                 (values best-fit best-err best-inliers)
-                 (multiple-value-bind (successp fit %err %inliers)
-                     (ransac-iteration f matches seed-points best-inliers err best-err)
-                   (let ((n (1- n)))
-                     (if successp
-                         (%go fit %err %inliers n)
-                         (%go best-fit best-err best-inliers n)))))))
-    (let ((initial-error ff:single-float-positive-infinity))
-      (if (< (length matches) seed-points)
-          (values nil initial-error 1)
-          (%go    nil initial-error 1 iterations)))))
+  (if (< (length matches) seed-points) nil
+      (let ((results (loop repeat iterations
+                           collect
+                           (lparallel:future
+                             (ransac-iteration f matches seed-points err)))))
+        (reduce
+         (lambda (acc result)
+           (let ((result (lparallel:force result)))
+             (if (or (not acc)
+                     (and result (or (> (ransac-result-inliers result)
+                                        (ransac-result-inliers acc))
+                                     (and (= (ransac-result-inliers result)
+                                             (ransac-result-inliers acc))
+                                          (< (ransac-result-error result)
+                                             (ransac-result-error acc))))))
+                 result acc)))
+         results :initial-value nil))))
