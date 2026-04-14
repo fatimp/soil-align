@@ -58,10 +58,6 @@
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
   :version "ql-2023-02-14"))
-("lmdb" .
- (:class qlot/source/ql:source-ql
-  :initargs (:%version :latest)
-  :version "ql-2025-06-22"))
 ("named-readtables" .
  (:class qlot/source/github:source-github
   :initargs (:repos "melisgl/named-readtables" :ref nil :branch nil :tag nil)
@@ -86,3 +82,7 @@
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
   :version "ql-2016-08-25"))
+("lmdb" .
+ (:class qlot/source/github:source-github
+  :initargs (:repos "shamazmazum/lmdb" :ref nil :branch nil :tag nil)
+  :version "github-cf3afbc25621c59436048496383180a3970d3367"))

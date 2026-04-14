@@ -12,10 +12,10 @@ ultralisp shamazmazum-vector-sum
 asdf 3.3.7
 ultralisp shamazmazum-entzauberte-matrices
 ql cl-conspack
-ql lmdb
 github melisgl/named-readtables
 ql fiveam
 github shamazmazum/approx
 github shamazmazum/codex
 github shamazmazum/docparser
 ql lparallel
+github shamazmazum/lmdb
