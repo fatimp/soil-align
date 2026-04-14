@@ -1,9 +1,3 @@
-(defsystem soil-align/libnn-so
-  :name :soil-align/libnn-so
-  :defsystem-depends-on (:cpp-wrapper)
-  :pathname "src"
-  :components ((:cpp-wrapper "libnn")))
-
 (defsystem :soil-align
   :name :soil-align
   :version "0.8"
@@ -28,7 +22,6 @@
                :lparallel
                :cl-conspack
                (:feature :freebsd :freebsd-sysctl)
-               :soil-align/libnn-so
                :soil-align/util
                :soil-align/preprocessing
                :soil-align/pca
