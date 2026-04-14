@@ -206,6 +206,8 @@
                    (add-offsets! sx sy sz src-kp)
                    ref-desc src-desc dist-ratio)))
             (log:info "Found matches between images")
+            ;; RANSAC is parallelized on the lisp side already
+            (em:set-num-threads 1)
             (let ((fit (trans:ransac (trans:rigid-transform-fit scalingp rot-constraint)
                                      matches
                                      :iterations ransac-iter
