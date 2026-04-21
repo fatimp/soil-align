@@ -295,7 +295,8 @@ less that ε."
                  for err = (match-fit-error fit match)
                  when (< err ε)
                    collect match)))
-    (when inliers
+    ;; There are k inliers or more
+    (when (nth (1- k) inliers)
       (let* ((fit (funcall f inliers))
              (err (fit-error fit inliers))
              (n (length inliers)))
