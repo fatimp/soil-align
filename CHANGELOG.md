@@ -1,5 +1,22 @@
 # Changelog
 
+## Version 0.9
+
+* Improvement: Descriptor matching is now done via very fast exact bruteforce
+  algorithm with the help of faiss[^1] library. Dependency on python is removed
+  entirely.
+* Improvement: RANSAC algorithm was parallelized.
+* Improvement: Soil-align does not build and require any wrapper libraries
+  anymore and can be distibuted as a single binary executable (of course, there
+  are some "external" dependencies like lmdb, faiss and SIFT3D) which can mostly
+  be found in the OS' package manager.
+* Incompatible change: entzauberte-matrices was updated to v0.3. On some
+  bullshit linux distors (Ubuntu-based) this requires liblapacke.so library to
+  be installed. Normally, usual OpenBLAS installation is enough.
+
+[^1]: Принадлежит компании Meta, признанной в РФ экстремистской
+    организацией. Осуждаем её и не поддерживаем!
+
 ## Version 0.8
 
 * Incompatible change: `--min-dog` parameter was removed from the command line

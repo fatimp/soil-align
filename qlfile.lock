@@ -50,10 +50,6 @@
  (:class qlot/source/asdf:source-asdf
   :initargs (:version "3.3.7")
   :version "3.3.7"))
-("shamazmazum-entzauberte-matrices" .
- (:class qlot/source/ultralisp:source-ultralisp
-  :initargs (:%version :latest)
-  :version "ultralisp-20260114095500"))
 ("cl-conspack" .
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
@@ -86,3 +82,7 @@
  (:class qlot/source/github:source-github
   :initargs (:repos "shamazmazum/lmdb" :ref nil :branch nil :tag nil)
   :version "github-cf3afbc25621c59436048496383180a3970d3367"))
+("entzauberte-matrices" .
+ (:class qlot/source/github:source-github
+  :initargs (:repos "shamazmazum/entzauberte-matrices" :ref nil :branch nil :tag "v0.3")
+  :version "github-33fa9324e6b9ea141eb2e6ad20087fa3a599df41"))
