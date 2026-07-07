@@ -1,11 +1,11 @@
 ("quicklisp" .
  (:class qlot/source/dist:source-dist
   :initargs (:distribution "https://beta.quicklisp.org/dist/quicklisp.txt" :%version :latest)
-  :version "2025-06-22"))
+  :version "2026-01-01"))
 ("serapeum" .
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
-  :version "ql-2025-06-22"))
+  :version "ql-2026-01-01"))
 ("alexandria" .
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
@@ -13,11 +13,11 @@
 ("float-features" .
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
-  :version "ql-2025-06-22"))
+  :version "ql-2026-01-01"))
 ("cffi" .
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
-  :version "ql-2025-06-22"))
+  :version "ql-2026-01-01"))
 ("log4cl" .
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
@@ -25,15 +25,7 @@
 ("parse-float" .
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
-  :version "ql-2020-02-18"))
-("shamazmazum-command-line-parse" .
- (:class qlot/source/ultralisp:source-ultralisp
-  :initargs (:%version :latest)
-  :version "ultralisp-20251022062000"))
-("shamazmazum-numpy-npy" .
- (:class qlot/source/ultralisp:source-ultralisp
-  :initargs (:%version :latest)
-  :version "ultralisp-20251022062000"))
+  :version "ql-2026-01-01"))
 ("nibbles" .
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
@@ -42,22 +34,14 @@
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
   :version "ql-2024-10-12"))
-("shamazmazum-vector-sum" .
- (:class qlot/source/ultralisp:source-ultralisp
-  :initargs (:%version :latest)
-  :version "ultralisp-20260114095500"))
 ("asdf" .
  (:class qlot/source/asdf:source-asdf
   :initargs (:version "3.3.7")
   :version "3.3.7"))
-("cl-conspack" .
- (:class qlot/source/ql:source-ql
-  :initargs (:%version :latest)
-  :version "ql-2023-02-14"))
 ("named-readtables" .
  (:class qlot/source/github:source-github
   :initargs (:repos "melisgl/named-readtables" :ref nil :branch nil :tag nil)
-  :version "github-aa6dab55abff3cca26b976d9a105c2006ca0c3b6"))
+  :version "github-9b774b51a08124c41881f10b30fb33425a3e6085"))
 ("fiveam" .
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
@@ -86,3 +70,19 @@
  (:class qlot/source/github:source-github
   :initargs (:repos "shamazmazum/entzauberte-matrices" :ref nil :branch nil :tag "v0.3")
   :version "github-33fa9324e6b9ea141eb2e6ad20087fa3a599df41"))
+("cl-conspack" .
+ (:class qlot/source/github:source-github
+  :initargs (:repos "conspack/cl-conspack" :ref nil :branch nil :tag nil)
+  :version "github-6e529d7b3a7223ef1bb5c7b9f18384ba67b50b09"))
+("command-line-parse" .
+ (:class qlot/source/github:source-github
+  :initargs (:repos "shamazmazum/command-line-parse" :ref nil :branch nil :tag nil)
+  :version "github-42591b6cb184fe17dae8b78bbde8a2ee452250d8"))
+("numpy-npy" .
+ (:class qlot/source/github:source-github
+  :initargs (:repos "shamazmazum/numpy-npy" :ref nil :branch nil :tag nil)
+  :version "github-0972403e254dc1eb39318aafe642ecc712514743"))
+("vector-sum" .
+ (:class qlot/source/github:source-github
+  :initargs (:repos "shamazmazum/vector-sum" :ref nil :branch nil :tag nil)
+  :version "github-7074bb52801f624cb132e53b28ff26d0ef5b079c"))

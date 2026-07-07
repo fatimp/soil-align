@@ -4,13 +4,9 @@ ql float-features
 ql cffi
 ql log4cl
 ql parse-float
-ultralisp shamazmazum-command-line-parse
-ultralisp shamazmazum-numpy-npy
 ql nibbles
 ql ironclad
-ultralisp shamazmazum-vector-sum
 asdf 3.3.7
-ql cl-conspack
 github melisgl/named-readtables
 ql fiveam
 github shamazmazum/approx
@@ -19,3 +15,7 @@ github shamazmazum/docparser
 ql lparallel
 github shamazmazum/lmdb
 github shamazmazum/entzauberte-matrices :tag v0.3
+github conspack/cl-conspack
+github shamazmazum/command-line-parse
+github shamazmazum/numpy-npy
+github shamazmazum/vector-sum
