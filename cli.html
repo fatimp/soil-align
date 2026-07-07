@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>
+  Утилита командной строки &ndash; soil-align
+</title>
+    <link rel="stylesheet" href="static/style.css"/>
+    
+  <link rel="stylesheet" href="static/highlight.css"/>
+  <script src="static/highlight.js"></script>
+  <script src="static/load-mathjax.js" async></script>
+  <style>
+   /* Highlight the current top-level TOC item, and hide the TOC of all other items */
+
+   .toc a[data-node="cli"] {
+       /*color: #AD3108;*/
+   }
+
+   .toc ol {
+       display: none;
+   }
+
+   .toc li a[data-node="cli"] {
+       font-weight: bold;
+   }
+
+   .toc li a[data-node="cli"] + ol {
+       display: block;
+   }
+
+   .toc li a[data-node="cli"] + ol li {
+       margin-left: 10px;
+   }
+  </style>
+
+  </head>
+  <body>
+    
+  <h1 class="doc-title">soil-align</h1>
+  <article id="article" data-section="cli">
+    <aside>
+      <ol class="toc"><li><a href="index.html" data-node="index">Чё такое?</a></li><li><a href="cli.html" data-node="cli">Утилита командной строки</a></li><li><a href="api.html" data-node="api">API</a></li></ol>
+    </aside>
+    <main class="codex-section">
+      <header>
+        <h2 class="section-title">Утилита командной строки</h2>
+      </header>
+      <div class="content">
+        <p>
+   Утилита командной строки имеет следующий интерфейс (выводится при запуске без
+   аргументов):
+   </p><pre><code class=NIL>Abrupt ending of the input: argument #&lt;ARGUMENT {1100444043}&gt; missing
+Usage: soil-align [-v|--verbose] [-t|--threads N] [-w|--workspace-side S]
+                  [-O|--transform-output m.npy] [-o|--output out.npy]
+                  [--rotation-constraint AXIS] [-s|--scaling]
+                  [-b|--background-color COLOR] [--dist-ratio C]
+                  [--fit-error E] [--ransac-iterations M]
+                  reference source
+
+Description of flags and options
+--ransac-iterations M           Number of RANSAC iterations
+--fit-error E                   The maximal allowed fit error to treat a sample as inlier
+--dist-ratio C                  Controls what we consider a match
+-b|--background-color COLOR     Background color
+-s|--scaling                    Add uniform scaling to the model
+--rotation-constraint AXIS      Constrain rotation to be around only one axis (0, 1 or 2)
+-o|--output out.npy             Output file name for a transformed image (.npy or .raw)
+-O|--transform-output m.npy     Output file name for a transform matrix (.npy)
+-w|--workspace-side S           Side of a workspace which is cut from center of the input images
+-t|--threads N                  Number of threads to use
+-v|--verbose                    Be verbose
+   </code></pre><p>   Два обязательных аргумента <code>reference</code> и <code>source</code> — это два входных
+   изображения в формате numpy массивов (.npy файлы) или raw. Soil-align
+   попробует сопоставить изображение <code>source</code> с <code>reference</code>. Для работы
+   также необходимы опции <code>-m</code> или <code>-o</code>(или обе сразу). Первая выводит
+   матрицу преобразования, переводящую <code>source</code> в <code>reference</code>, а вторая —
+   трансформированное изображение <code>source</code> таким образом, чтобы его элементы
+   максимально совпадали с <code>reference</code>. Тип элемента (<code>dtype</code> в numpy)
+   входных массивов должен быть <code>uint8</code>. Опция <code>-w</code> позволяет вырезать
+   область из центра входных массивов и искать ключевые точки в ней, применяя
+   потом найденное преобразование на весь исходный массив, таким образом экономя
+   время и память. Параметры <code>-s</code> и <code>-r</code> управляют тем, какая модель будет
+   использована для поиска преобразования. Флаг <code>-s</code> включает поиск
+   коэффициента масштабирования, а <code>-r</code> позволяет ограничить вращение одной из
+   осей. Остальные опции относятся к настройкам алгоритмов 3D SIFT и
+   RANSAC. Рекомендуется обратиться к литературе для понимания их значения.</p><p>   Для работы с raw форматом (не рекомендуется!) нужно создать файл метаданных с
+   расширением <code>s-exp</code> на каждый входной raw файл, имеющий вид:
+   </p><pre><code class=NIL>(имя-файла-в-кавычках размерность-0 размерность-1 размерность-2)
+   </code></pre><p>
+   например
+   </p><pre><code class=NIL>(&quot;foo.raw&quot; 1000 1000 600)
+   </code></pre><p>
+   Ожидается, что raw файл будет хранить данные в row-major порядке, один
+   беззнаковый октет на воксель. Для записи преобразованного изображения в raw
+   формат нужно указать выходной файл с расширением <code>raw</code>. Размерность
+   выходного массива соответствует размерности <code>source</code>, поэтому для него файл
+   метаданных не нужен.</p><p>   Soil-align использует базу данных для сохранения дескрипторов. По умолнчанию
+   база сохраняется в директории <code>~/.local/share/soil-align/</code>, но путь до базы
+   может быть переназначен переменной окружения <code>SOIL_ALIGN_DB</code>. В данный
+   момент база занимает довольно значительный объём, и рекомендуется вручную
+   удалять её после окончания работы с датасетом.
+</p>
+      </div>
+    </main>
+  </article>
+  <footer>
+    <div class="info">
+      Created with <a href="https://github.com/CommonDoc/codex">Codex</a>.
+    </div>
+  </footer>
+  <script>
+   HighlightLisp.highlight_auto();
+  </script>
+
+  </body>
+</html>

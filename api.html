@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>
+  API &ndash; soil-align
+</title>
+    <link rel="stylesheet" href="static/style.css"/>
+    
+  <link rel="stylesheet" href="static/highlight.css"/>
+  <script src="static/highlight.js"></script>
+  <script src="static/load-mathjax.js" async></script>
+  <style>
+   /* Highlight the current top-level TOC item, and hide the TOC of all other items */
+
+   .toc a[data-node="api"] {
+       /*color: #AD3108;*/
+   }
+
+   .toc ol {
+       display: none;
+   }
+
+   .toc li a[data-node="api"] {
+       font-weight: bold;
+   }
+
+   .toc li a[data-node="api"] + ol {
+       display: block;
+   }
+
+   .toc li a[data-node="api"] + ol li {
+       margin-left: 10px;
+   }
+  </style>
+
+  </head>
+  <body>
+    
+  <h1 class="doc-title">soil-align</h1>
+  <article id="article" data-section="api">
+    <aside>
+      <ol class="toc"><li><a href="index.html" data-node="index">Чё такое?</a></li><li><a href="cli.html" data-node="cli">Утилита командной строки</a></li><li><a href="api.html" data-node="api">API</a></li></ol>
+    </aside>
+    <main class="codex-section">
+      <header>
+        <h2 class="section-title">API</h2>
+      </header>
+      <div class="content">
+        <p>
+  Пакет <code>soil-align/preprocessing</code>:
+  
+    <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">clahe</code><code class="codex-lambda-list">(image &amp;key (bin-dimensions (default-bin-dimensions image)) (clip-limit 0.015))</code><div class="codex-docstring">Perform contrast limited adaptive histogram equalization (constrast
+enhancement) of an image. The parameter <code>BIN-DIMENSIONS</code> controls
+dimensions of a single histogram.</div></div>
+  </p><p>  Пакет <code>soil-align/sift3d</code>:
+  
+    <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">descriptors</code><code class="codex-lambda-list">(array)</code><div class="codex-docstring">Take an image (3D array of single-floats) and return an array of
+keypoint coordinates and their descriptors.</div></div>
+  </p><p>  Пакет <code>soil-align/pca</code>:
+  
+    <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">fit-pca</code><code class="codex-lambda-list">(descriptors explained-variance)</code><div class="codex-docstring">Return a matrix which projects vectors from the descriptor space to
+a PCA space of lesser dimensionality. The parameter
+<code>EXPLAINED-VARIANCE</code> controls dimensionality of that space.</div></div>
+    <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">transform-pca</code><code class="codex-lambda-list">(descriptors vt means)</code><div class="codex-docstring">Apply a transform to the PCA space to descriptors. <code>VT</code> and
+<code>MEANS</code> are obtained from <code>FIT-PCA</code>.</div></div>
+    <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">invert-pca</code><code class="codex-lambda-list">(pca vt means)</code><div class="codex-docstring">This is a (lossy) inversion of <code>TRANSFORM-PCA</code>, i.e. it convects
+vectors in the PCA space back into the descriptor space.</div></div>
+  </p><p>  Пакет <code>soil-align/db</code>:
+  
+    <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">descriptors-cached</code><code class="codex-lambda-list">(array db-pathname)</code><div class="codex-docstring"><p>Calculate image descriptors using 3D SIFT and cache them in a
+database. The next time the descriptors are calculated for this
+particular array the results are read from the database. The database
+uses SHA256 hash of the array as a key into the database. Unlike
+<code>SOIL-ALIGN/SIFT3D:DESCRIPTORS</code> function, this function accepts an
+(original) array of octets which is later converted to an array of
+single floats using CLAHE algorithm. <code>DB-PATHNAME</code> argument is a
+path to the database.</p><p>Return three values: Coordinates of keypoints, descriptors in the PCA
+space, a transform from the descriptor space to the PCA space,
+descriptor components means.</p></div></div>
+  </p><p>  Пакет <code>soil-align/match</code>:
+  
+    <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">match-descriptors</code><code class="codex-lambda-list">(c1 c2 d1 d2 &amp;optional (c 1.2))</code><div class="codex-docstring">Find matches between two sets of descriptors. The parameter <code>C</code>
+controls what we treat as a match. Bigger values result in a lesser
+number of more stable matches. \(C_i\) is an array of keypoint
+coordinates and \(D_i\) is an array of corresponding descriptors.</div></div>
+  </p><p>  Пакет <code>soil-align/transform</code>:
+  
+    <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">rigid-transform-fit</code><code class="codex-lambda-list">(&amp;optional scalingp rotation-constraint)</code><div class="codex-docstring">Return a function which finds a rigid transform which fits the
+matches. The parameter <code>rotation-constraint</code> controls what rotations
+are allowed and can be <code>nil</code> or a number 0, 1 or 2. If it's <code>nil</code>
+rotation is unconstrained. If it's a number, only rotation around that
+axis is allowed. The parameter <code>scaling</code>, if non-<code>nil</code>, also
+enables uniform scaling of the coordinates.</div></div>
+    <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">ransac</code><code class="codex-lambda-list">(f matches &amp;key (iterations 500) (seed-points 15) (err 100.0))</code><div class="codex-docstring">Find an affine transform which transforms the first keypoint in
+each pair of matches to the second keypoint. Keypoint parameters are
+related to the RANSAC algorithm: <code>ITERATIONS</code> is the number of
+iterations, <code>SEED-POINTS</code> is an initial number of points to make a
+fit. A point is well-fit if \(\| y - Ax \|\) is less than <code>ERR</code>,
+(\(A\) is a candidate for the found fit). The function <code>F</code> fits a
+subset of <code>MATCHES</code> and controls the type of transform (e.g. rigid,
+translation, etc.).</div></div>
+  </p><p>  Пакет <code>soil-align/array-transform</code>:
+  
+    <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">apply-transform</code><code class="codex-lambda-list">(array m shape &amp;key (background 0))</code><div class="codex-docstring">Apply affine transform <code>M</code>(in the form of 4x4 matrix) to an
+image. The result has the shape <code>shape</code>.</div></div>
+  
+</p>
+      </div>
+    </main>
+  </article>
+  <footer>
+    <div class="info">
+      Created with <a href="https://github.com/CommonDoc/codex">Codex</a>.
+    </div>
+  </footer>
+  <script>
+   HighlightLisp.highlight_auto();
+  </script>
+
+  </body>
+</html>

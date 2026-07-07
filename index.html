@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>
+  Чё такое? &ndash; soil-align
+</title>
+    <link rel="stylesheet" href="static/style.css"/>
+    
+  <link rel="stylesheet" href="static/highlight.css"/>
+  <script src="static/highlight.js"></script>
+  <script src="static/load-mathjax.js" async></script>
+  <style>
+   /* Highlight the current top-level TOC item, and hide the TOC of all other items */
+
+   .toc a[data-node="index"] {
+       /*color: #AD3108;*/
+   }
+
+   .toc ol {
+       display: none;
+   }
+
+   .toc li a[data-node="index"] {
+       font-weight: bold;
+   }
+
+   .toc li a[data-node="index"] + ol {
+       display: block;
+   }
+
+   .toc li a[data-node="index"] + ol li {
+       margin-left: 10px;
+   }
+  </style>
+
+  </head>
+  <body>
+    
+  <h1 class="doc-title">soil-align</h1>
+  <article id="article" data-section="index">
+    <aside>
+      <ol class="toc"><li><a href="index.html" data-node="index">Чё такое?</a></li><li><a href="cli.html" data-node="cli">Утилита командной строки</a></li><li><a href="api.html" data-node="api">API</a></li></ol>
+    </aside>
+    <main class="codex-section">
+      <header>
+        <h2 class="section-title">Чё такое?</h2>
+      </header>
+      <div class="content">
+        <p>
+   <code>soil-align</code> — это библиотека и программа для выравнивания трёхмерных
+   изображений пористых сред. Её принцип действия основан на расчёте ключевых
+   точек изображения, инвариантных относительно аффинных преобразований,
+   сопоставлении их на двух изображениях (названных входным и референсным),
+   нахождении преобразования, переводящего входное изображение в референсное, и
+   применении этого преобразования к входному изображению.</p><p>   Зависимости:
+   </p><ul><li><a href="https://github.com/fatimp/SIFT3D">SIFT3D</a> версия 2.0+</li><li>faiss (принадлежит компании Meta, признанной в РФ экстремистской организацией)</li><li>SBCL (другая реализация CL не подойдёт)</li><li>OpenBLAS</li><li>LMDB</li></ul><p>   Как установить:
+   </p><ol><li>Установить <a href="https://www.quicklisp.org/beta/">quicklisp</a></li><li>Склонировать этот репозиторий в <code>local-projects</code></li><li>В REPL выполнить <code>(ql:quickload :soil-align)</code></li><li>Для сборки утилиты командной строки выполнить <code>(asdf:make :soil-align)</code></li></ol><p>   Пример работы (показаны 2D срезы):
+   <img src="example.png"/></p><p>   Используемые алгоритмы:
+   </p><ul><li>B. Rister, M. A. Horowitz and D. L. Rubin, &quot;Volumetric Image
+   Registration From Invariant Keypoints,&quot; in IEEE Transactions on Image
+   Processing, vol. 26, no. 10, pp. 4900-4910, Oct. 2017. doi:
+   10.1109/TIP.2017.2722689</li><li>Dong, Wei, Charikar Moses, and Kai Li. &quot;Efficient k-nearest neighbor
+   graph construction for generic similarity measures.&quot; Proceedings of the 20th
+   international conference on World wide web. ACM, 2011.</li><li><a href="https://en.wikipedia.org/wiki/Adaptive_histogram_equalization#CLAHE">CLAHE</a></li><li><a href="https://en.wikipedia.org/wiki/Random_sample_consensus">RANSAC</a></li></ul><p>
+</p>
+      </div>
+    </main>
+  </article>
+  <footer>
+    <div class="info">
+      Created with <a href="https://github.com/CommonDoc/codex">Codex</a>.
+    </div>
+  </footer>
+  <script>
+   HighlightLisp.highlight_auto();
+  </script>
+
+  </body>
+</html>
