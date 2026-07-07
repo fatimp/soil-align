@@ -1,0 +1,67 @@
+name: CI documentation
+
+on:
+  push:
+    tags: [v*]
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Checkout SIFT3D
+        uses: actions/checkout@v7
+        with:
+          repository: fatimp/sift3d
+          path: sift3d
+      - name: Checkout Faiss
+        uses: actions/checkout@v7
+        with:
+          repository: facebookresearch/faiss
+          path: faiss
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install build-essential cmake libblas-dev \
+          liblapack-dev libopenblas-dev liblmdb-dev libopenblas-openmp-dev \
+          liblapacke-dev
+      - name: Build SIFT3D
+        run: |
+          cd $GITHUB_WORKSPACE/sift3d
+          mkdir build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=RELEASE -DWITH_EXAMPLES=OFF ..
+          make -j4 && sudo make install
+      - name: Build Faiss
+        run: |
+          cd $GITHUB_WORKSPACE/faiss
+          mkdir build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=RELEASE -DBUILD_SHARED_LIBS=ON \
+          -DFAISS_ENABLE_C_API=ON -DBUILD_TESTING=OFF -DFAISS_ENABLE_GPU=OFF \
+          -DFAISS_ENABLE_PYTHON=OFF ..
+          make -j4 && sudo make install
+      - name: Install roswell
+        run: |
+          curl -L https://raw.githubusercontent.com/roswell/roswell/master/scripts/install-for-ci.sh | sh
+      - name: Install qlot
+        run: |
+          ros install qlot
+      - name: Set Path
+        run: |
+          echo "${HOME}/.roswell/bin" >> $GITHUB_PATH
+      - name: Build documentation
+        # I need to skip SSL certificate checks because of an expired
+        # certificate at gitlab.common-lisp.net
+        run: |
+          cd $GITHUB_WORKSPACE
+          export GIT_SSL_NO_VERIFY=1
+          export LD_LIBRARY_PATH=/usr/local/lib
+          qlot install
+          qlot exec ros -s codex -e '(codex:document :soil-align)'
+      - name: Deploy to GH pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: docs/build/soil-align/html

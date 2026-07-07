@@ -1,4 +1,5 @@
 # soil-align
+[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://fatimp.github.io/soil-align)
 
 Программа для выравнивания 3D изображений пористых сред.
 
@@ -36,5 +37,3 @@ $ qlot exec sbcl --dynamic-space-size 100gb
 (ql:quickload :codex)
 (codex:document :soil-align)
 ```
-
-Был бы здесь gitlab pages, тут была бы ссылка на документацию

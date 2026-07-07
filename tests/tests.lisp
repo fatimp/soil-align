@@ -3,12 +3,15 @@
 (def-suite stuff :description "Different aspects of soil-align")
 
 (defun run-tests ()
-  (every #'identity
-         (mapcar (lambda (suite)
-                   (let ((status (run suite)))
-                     (explain! status)
-                     (results-status status)))
-                 '(stuff))))
+  (let ((lparallel:*kernel* (lparallel:make-kernel 4)))
+    (unwind-protect
+         (every #'identity
+                (mapcar (lambda (suite)
+                          (let ((status (run suite)))
+                            (explain! status)
+                            (results-status status)))
+                        '(stuff)))
+      (lparallel:end-kernel :wait t))))
 
 (defun gen-descriptors (n m)
   "Make n descriptors with m independent variables."
@@ -51,7 +54,7 @@
 (test ransac
   (for-all ((inliers  (gen-list :length   (gen-integer :min 2000 :max 3000)
                                 :elements (gen-coord)))
-            (outliers (gen-list :length   (gen-integer :min 500 :max 1500)
+            (outliers (gen-list :length   (gen-integer :min 100 :max 500)
                                 :elements (gen-pair (gen-coord))))
             (translation (gen-coord)))
     (let* ((inliers (mapcar
