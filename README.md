@@ -1,39 +1,51 @@
 # soil-align
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://fatimp.github.io/soil-align)
 
-Программа для выравнивания 3D изображений пористых сред.
+**Soil-align** is a program for registration of 3D images of porous media
+(e.g. soil, hence the name).
 
-## Зависимости:
+Registration is the process of bringing different images (e.g. taken from
+different angles or having different contrast and/or resolution) of the same
+sample into one coordinate space.
+
+TODO: Add an image
+
+## Dependencies:
 
 * [https://github.com/fatimp/SIFT3D](SIFT3D) version 2.0+
 * faiss[^1]
 * OpenBLAS
 * LMDB
-* SBCL (другая реализация CL не подойдёт)
+* SBCL (Any other implementation of Common Lisp will no work)
 * Qlot
 
 [^1]: Принадлежит компании Meta, признанной в РФ экстремистской
     организацией. Осуждаем её и не поддерживаем!
 
-## Установка
+## Installation
 
-Для установки перейти в директорию, куда склонирован этот репозиторий и
-выполнить
+For installation, launch a shell, go to the directory containing this repository
+and exec
 
 ~~~~
 $ qlot install
 $ qlot exec sbcl --dynamic-space-size 100gb
 ~~~~
 
-и в REPL ввести команду
+and execute the following command in the opened REPL:
 
 ``` lisp
 (asdf:make :soil-align)
 ```
 
-Получившийся бинарник забрать из `src`
+The binary executable will be located in `src`.
+
+## Documentation
+
+Visit our website for the documentation. Alternatively you can build it locally
+from the REPL:
 
 ``` lisp
-(ql:quickload :codex)
+(asdf:load-system :codex)
 (codex:document :soil-align)
 ```
