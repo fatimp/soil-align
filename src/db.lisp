@@ -54,9 +54,9 @@ uses SHA256 hash of the array as a key into the database. Unlike
 single floats using CLAHE algorithm. @c(DB-PATHNAME) argument is a
 path to the database.
 
-Return three values: Coordinates of keypoints, descriptors in the PCA
+Return four values: Coordinates of keypoints, descriptors in the PCA
 space, a transform from the descriptor space to the PCA space,
-descriptor components means."
+descriptor component means."
   (let ((hash (image-hash array)))
     (ensure-directories-exist db-pathname)
     (lmdb+:with-env (env (uiop:native-namestring db-pathname)

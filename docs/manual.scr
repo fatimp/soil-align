@@ -1,52 +1,60 @@
 @begin[ref=index](section)
-   @title(Чё такое?)
-   @c(soil-align) — это библиотека и программа для выравнивания трёхмерных
-   изображений пористых сред. Её принцип действия основан на расчёте ключевых
-   точек изображения, инвариантных относительно аффинных преобразований,
-   сопоставлении их на двух изображениях (названных входным и референсным),
-   нахождении преобразования, переводящего входное изображение в референсное, и
-   применении этого преобразования к входному изображению.
+   @title(Introduction)
+   @c(soil-align) is an application for registration of 3D images of porous
+   media. It's based on computing affine transform and gamma correction
+   invariant feature points (using the SIFT algorithm modified for 3D),
+   matching them on two images (one of which called "source" and another
+   "reference") and finding a transform which "maps" the source image to the
+   reference.
 
-   Зависимости:
-   @begin(list)
-     @item(@link[uri="https://github.com/fatimp/SIFT3D"](SIFT3D) версия 2.0+)
-     @item(faiss (принадлежит компании Meta, признанной в РФ экстремистской организацией))
-     @item(SBCL (другая реализация CL не подойдёт))
-     @item(OpenBLAS)
-     @item(LMDB)
-   @end(list)
-
-   Как установить:
-   @begin(enum)
-     @item(Установить @link[uri="https://www.quicklisp.org/beta/"](quicklisp))
-     @item(Склонировать этот репозиторий в @c(local-projects))
-     @item(В REPL выполнить @c((ql:quickload :soil-align)))
-     @item(Для сборки утилиты командной строки выполнить @c((asdf:make :soil-align)))
-   @end(enum)
-
-   Пример работы (показаны 2D срезы):
+   An example. Two 2D slices from the same place in the images are shown (left —
+   reference image, right — registered image):
    @image[src=example.png]()
 
-   Используемые алгоритмы:
-   @begin(list)
-     @item(B. Rister, M. A. Horowitz and D. L. Rubin, "Volumetric Image
-   Registration From Invariant Keypoints," in IEEE Transactions on Image
-   Processing, vol. 26, no. 10, pp. 4900-4910, Oct. 2017. doi:
-   10.1109/TIP.2017.2722689)
-     @item(Dong, Wei, Charikar Moses, and Kai Li. "Efficient k-nearest neighbor
-   graph construction for generic similarity measures." Proceedings of the 20th
-   international conference on World wide web. ACM, 2011.)
-     @item(@link[uri="https://en.wikipedia.org/wiki/Adaptive_histogram_equalization#CLAHE"](CLAHE))
-     @item(@link[uri="https://en.wikipedia.org/wiki/Random_sample_consensus"](RANSAC))
-   @end(list)
+   @begin(section)
+   @title(Dependencies)
+     @begin(list)
+       @item(@link[uri="https://github.com/fatimp/SIFT3D"](SIFT3D) version 2.0+)
+       @item(faiss (принадлежит компании Meta, признанной в РФ экстремистской организацией))
+       @item(SBCL (Another implementation of Common Lisp will not do))
+       @item(OpenBLAS)
+       @item(LMDB)
+     @end(list)
+   @end(section)
+
+   @begin(section)
+   @title(Installation)
+     @begin(enum)
+       @item(Launch a shell and @c(cd) to the root directory of this project.)
+       @item(Execute @c(qlot install && qlot exec sbcl --dynamic-space-size 100gb))
+       @item(In the opened shell execute @c((asdf:make :soil-align)).)
+       @item(Your executable file is @c(src/soil-align).)
+     @end(enum)
+   @end(section)
+
+   @begin(section)
+   @title(Literature)
+     @begin(list)
+       @item(B. Rister, M. A. Horowitz and D. L. Rubin, "Volumetric Image
+     Registration From Invariant Keypoints," in IEEE Transactions on Image
+     Processing, vol. 26, no. 10, pp. 4900-4910, Oct. 2017. doi:
+     10.1109/TIP.2017.2722689)
+       @item(Dong, Wei, Charikar Moses, and Kai Li. "Efficient k-nearest neighbor
+     graph construction for generic similarity measures." Proceedings of the 20th
+     international conference on World wide web. ACM, 2011.)
+       @item(@link[uri="https://en.wikipedia.org/wiki/Adaptive_histogram_equalization#CLAHE"](CLAHE))
+       @item(@link[uri="https://en.wikipedia.org/wiki/Random_sample_consensus"](RANSAC))
+     @end(list)
+   @end(section)
 @end(section)
 
 @begin[ref=cli](section)
-   @title(Утилита командной строки)
-   Утилита командной строки имеет следующий интерфейс (выводится при запуске без
-   аргументов):
+   @title(Command line tool)
+   Soil-align application has a command line interface. If you launch it without
+   arguments the following short help appears:
    @begin(code)
-Abrupt ending of the input: argument #<ARGUMENT {1100444043}> missing
+% soil-align
+Abrupt ending of the input: argument #<ARGUMENT {11004A6423}> missing
 Usage: soil-align [-v|--verbose] [-t|--threads N] [-w|--workspace-side S]
                   [-O|--transform-output m.npy] [-o|--output out.npy]
                   [--rotation-constraint AXIS] [-s|--scaling]
@@ -68,80 +76,114 @@ Description of flags and options
 -v|--verbose                    Be verbose
    @end(code)
 
-   Два обязательных аргумента @c(reference) и @c(source) — это два входных
-   изображения в формате numpy массивов (.npy файлы) или raw. Soil-align
-   попробует сопоставить изображение @c(source) с @c(reference). Для работы
-   также необходимы опции @c(-m) или @c(-o) (или обе сразу). Первая выводит
-   матрицу преобразования, переводящую @c(source) в @c(reference), а вторая —
-   трансформированное изображение @c(source) таким образом, чтобы его элементы
-   максимально совпадали с @c(reference). Тип элемента (@c(dtype) в numpy)
-   входных массивов должен быть @c(uint8). Опция @c(-w) позволяет вырезать
-   область из центра входных массивов и искать ключевые точки в ней, применяя
-   потом найденное преобразование на весь исходный массив, таким образом экономя
-   время и память. Параметры @c(-s) и @c(-r) управляют тем, какая модель будет
-   использована для поиска преобразования. Флаг @c(-s) включает поиск
-   коэффициента масштабирования, а @c(-r) позволяет ограничить вращение одной из
-   осей. Остальные опции относятся к настройкам алгоритмов 3D SIFT и
-   RANSAC. Рекомендуется обратиться к литературе для понимания их значения.
+   Two mandatory arguments @c(reference) and @c(source) are two input
+   images. Soil-align will try to bring a source image into a reference'
+   coordinate system and write a result image (if @c(-o) option is specified)
+   and/or write a transform matrix (if @c(-O) option is specified). The
+   transform matrix is 4×4 matrix in Numpy format which when left-multiplied by
+   an augmented coordinate vector \((x, y, z, 1)^T\) in the reference'
+   coordinate system produces a coordinate vector \((x', y', z', 1)^T\) in the
+   source' coordinate system.
 
-   Для работы с raw форматом (не рекомендуется!) нужно создать файл метаданных с
-   расширением @c(s-exp) на каждый входной raw файл, имеющий вид:
+   Here we discuss not-so-important options:
+   @begin(list)
+     @item(@c(-v) — Be more verbose)
+     @item(@c(-t) — Number of threads. Used when computing image feature points
+   and matching descriptors. On FreeBSD platform the default is a half of
+   available cores, but no more than 10. On other platforms the default is 1.)
+     @item(@c(-w) — Used to crop a big input image. When not specified the whole
+   image is used to compute feature points. When specified, a window of this
+   side is cut from the center of an image. Feature points are only found in
+   this window).
+     @item(@c(--rotation-constraint) — When finding a transform between the
+   reference' and source' coordinate systems constrain possible rotations, so
+   only a rotation around this axis (0, 1 or 2) is allowed. When not specified,
+   all rotations are allowed. Numeration of axes is in row-major order (i.e. if
+   an array @c(a[i, j ,k]) is a pixel in your image, then @c(i) is the 0th
+   index, @c(j) is the 1st index and @c(k) is the 3rd index)).
+     @item(@c(-s) — Allow scaling (assume the images are of different
+   resolution) when finding a transform between the reference' and source'
+   coordinate systems. This feature is experimental and is turned off by
+   default.)
+     @item(@c(-b) — What color to use for out-of-bounds array access. Used to
+   produce the resulting image. Can range from 0 to 255.)
+     @item(@c(--dist-ratio) — Feature points are matched using 2-nearest
+   neighbors according to Euclidean distance between corresponding
+   descriptors. Two points \(p_{ref}\) and \(p_{src}\) match if \(d
+   \rho(p_{ref}, p_{src}) < \rho(p_{ref}, p'_{src})\). Here \(p'_{src}\) is the
+   second-nearest feature point and \(d\) is the distance ratio. The default
+   value is 1.2)
+     @item(@c(--fit-error) — A parameter used in the RANSAC algorithm to
+   determine if a model fits a point. The default value is 100.0)
+     @item(@c(--ransac-iterations) — A number of RANSAC iterations to find a
+   model which fits the feature points. The default value is 5000.)
+   @end(list)
+
+   Supported formats:
+   @begin(list)
+     @item(Numpy arrays (.npy files). These arrays must have rank 3 and dtype
+   'uint8'. Elements of an array encode pixel intensity at the point.)
+     @item(Raw files (not recommended!))
+   @end(list)
+
+   To use raw files (once again: not recommended!) you need to create a metadata
+   file with extension @c(s-exp) for each input file. It contents should be:
    @begin(code)
-(имя-файла-в-кавычках размерность-0 размерность-1 размерность-2)
+(quoted-name-of-raw-file dim-x dim-y dim-z)
    @end(code)
-   например
+   for example
    @begin(code)
 ("foo.raw" 1000 1000 600)
    @end(code)
-   Ожидается, что raw файл будет хранить данные в row-major порядке, один
-   беззнаковый октет на воксель. Для записи преобразованного изображения в raw
-   формат нужно указать выходной файл с расширением @c(raw). Размерность
-   выходного массива соответствует размерности @c(source), поэтому для него файл
-   метаданных не нужен.
+   It is expected that raw file has its content in row-major order with one
+   unsigned octet per voxel.
+   For output files you don't need metadata (dimensions of the output =
+   dimensions of the source).
 
-   Soil-align использует базу данных для сохранения дескрипторов. По умолнчанию
-   база сохраняется в директории @c(~/.local/share/soil-align/), но путь до базы
-   может быть переназначен переменной окружения @c(SOIL_ALIGN_DB). В данный
-   момент база занимает довольно значительный объём, и рекомендуется вручную
-   удалять её после окончания работы с датасетом.
+   Soil-align utilises LMDB to store image descriptors. The DB is written at
+   @c(~/.local/share/soil-align/) by default, but the path can be overwritten
+   with @c(SOIL_ALIGN_DB) environment variable. The DB accelerates registration
+   within the same dataset. After working with the dataset it's recommended to
+   manually remove the database. No DB pruning or what else to reduce the DB
+   size is implemented at the moment.
 @end(section)
 
 @begin(section)
   @title(API)
-  Пакет @c(soil-align/preprocessing):
+  Package @c(soil-align/preprocessing):
   @cl:with-package[name="soil-align/preprocessing"](
     @cl:doc(function clahe)
   )
 
-  Пакет @c(soil-align/sift3d):
+  Package @c(soil-align/sift3d):
   @cl:with-package[name="soil-align/sift3d"](
     @cl:doc(function descriptors)
   )
 
-  Пакет @c(soil-align/pca):
+  Package @c(soil-align/pca):
   @cl:with-package[name="soil-align/pca"](
     @cl:doc(function fit-pca)
     @cl:doc(function transform-pca)
     @cl:doc(function invert-pca)
   )
 
-  Пакет @c(soil-align/db):
+  Package @c(soil-align/db):
   @cl:with-package[name="soil-align/db"](
     @cl:doc(function descriptors-cached)
   )
 
-  Пакет @c(soil-align/match):
+  Package @c(soil-align/match):
   @cl:with-package[name="soil-align/match"](
     @cl:doc(function match-descriptors)
   )
 
-  Пакет @c(soil-align/transform):
+  Package @c(soil-align/transform):
   @cl:with-package[name="soil-align/transform"](
     @cl:doc(function rigid-transform-fit)
     @cl:doc(function ransac)
   )
 
-  Пакет @c(soil-align/array-transform):
+  Package @c(soil-align/array-transform):
   @cl:with-package[name="soil-align/array-transform"](
     @cl:doc(function apply-transform)
   )

@@ -105,7 +105,7 @@ a PCA space of lesser dimensionality. The parameter
               (simple-array single-float (#.util:+descriptor-length+)))
              (values (util:fixed-entries #.util:+descriptor-length+) &optional))
 (defun invert-pca (pca vt means)
-  "This is a (lossy) inversion of @c(TRANSFORM-PCA), i.e. it convects
+  "This is a (lossy) inversion of @c(TRANSFORM-PCA), i.e. it converts
 vectors in the PCA space back into the descriptor space."
   (op-means (em:mult pca vt) means :add))
 
