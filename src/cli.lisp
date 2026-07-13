@@ -244,20 +244,24 @@
                         (trans:ransac-result-inliers fit)
                         (trans:ransac-result-error   fit)))))))))
 
-(deftype foreign-user-input-error () '(or cmd-line-parse-error))
-
 (defun handle-error (c)
   (princ c *error-output*)
   (terpri *error-output*)
-  (if (typep c '(and (or util:internal-error (not util:generic-error))
-                 (not foreign-user-input-error)))
-      (sb-debug:backtrace 20 *error-output*)
-      (print-usage *parser* "soil-align"))
-  (uiop:quit 1))
+  (typecase c
+    (sb-sys:interactive-interrupt
+     ;; Silently quit
+     (uiop:quit 0))
+    ((or cmd-line-parse-error
+         (and util:generic-error (not util:internal-error)))
+     (print-usage *parser* "soil-align")
+     (uiop:quit 1))
+    (error
+     (sb-debug:backtrace 20 *error-output*)
+     (uiop:quit 1))))
 
 (defun main ()
   (sb-ext:disable-debugger)
   (handler-bind
-      ((error #'handle-error))
+      ((condition #'handle-error))
     (%main))
   (uiop:quit 0))
