@@ -7,8 +7,10 @@
    "reference") and finding a transform which "maps" the source image to the
    reference.
 
-   An example. Two 2D slices from the same place in the images are shown (left —
-   reference image, right — registered image):
+   An example: 2D slices (@c([100, :, :]) and @c([700, :, :])) from the
+   reference and the source images (both having dimensions \(800 \times 800
+   \times 800\)) are shown, as well as the resulting image (standalone and
+   overlayed with the reference).
    @image[src=example.png]()
 
    @begin(section)
