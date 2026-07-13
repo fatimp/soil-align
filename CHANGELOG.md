@@ -1,5 +1,11 @@
 # Changelog
 
+## Version 0.10
+
+* Improvement: Update documentation
+* Improvement: Do not print backtrace when `C-c` is pressed
+* Bug fix: fix a crash in rare situations when there are too few inliers.
+
 ## Version 0.9
 
 * Improvement: Descriptor matching is now done via very fast exact bruteforce

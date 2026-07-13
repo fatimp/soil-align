@@ -1,6 +1,6 @@
 (defsystem :soil-align
   :name :soil-align
-  :version "0.9"
+  :version "0.10"
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :description "Align images of soil"
   :pathname "src"
