@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>
-  Утилита командной строки &ndash; soil-align
+  Command line tool &ndash; soil-align
 </title>
     <link rel="stylesheet" href="static/style.css"/>
     
@@ -42,17 +42,19 @@
   <h1 class="doc-title">soil-align</h1>
   <article id="article" data-section="cli">
     <aside>
-      <ol class="toc"><li><a href="index.html" data-node="index">Чё такое?</a></li><li><a href="cli.html" data-node="cli">Утилита командной строки</a></li><li><a href="api.html" data-node="api">API</a></li></ol>
+      <ol class="toc"><li><a href="index.html" data-node="index">Introduction</a><ol><li><a href="index.html#dependencies" data-node="dependencies">Dependencies</a></li><li><a href="index.html#installation" data-node="installation">Installation</a></li><li><a href="index.html#literature" data-node="literature">Literature</a></li></ol></li><li><a href="cli.html" data-node="cli">Command line tool</a><ol><li><a href="cli.html#how-to-use" data-node="how-to-use">How to use</a></li><li><a href="cli.html#output-explained" data-node="output-explained">Output explained</a></li><li><a href="cli.html#supported-formats" data-node="supported-formats">Supported formats</a></li></ol></li><li><a href="api.html" data-node="api">API</a></li></ol>
     </aside>
     <main class="codex-section">
       <header>
-        <h2 class="section-title">Утилита командной строки</h2>
+        <h2 class="section-title">Command line tool</h2>
       </header>
       <div class="content">
         <p>
-   Утилита командной строки имеет следующий интерфейс (выводится при запуске без
-   аргументов):
-   </p><pre><code class=NIL>Abrupt ending of the input: argument #&lt;ARGUMENT {1100444043}&gt; missing
+   </p><h1 id="how-to-use">How to use</h1><p>
+   Soil-align application has a command line interface. If you launch it without
+   arguments the following short help appears:
+   </p><pre><code class=NIL>% soil-align
+Abrupt ending of the input: argument #&lt;ARGUMENT {11004A6423}&gt; missing
 Usage: soil-align [-v|--verbose] [-t|--threads N] [-w|--workspace-side S]
                   [-O|--transform-output m.npy] [-o|--output out.npy]
                   [--rotation-constraint AXIS] [-s|--scaling]
@@ -72,36 +74,101 @@ Description of flags and options
 -w|--workspace-side S           Side of a workspace which is cut from center of the input images
 -t|--threads N                  Number of threads to use
 -v|--verbose                    Be verbose
-   </code></pre><p>   Два обязательных аргумента <code>reference</code> и <code>source</code> — это два входных
-   изображения в формате numpy массивов (.npy файлы) или raw. Soil-align
-   попробует сопоставить изображение <code>source</code> с <code>reference</code>. Для работы
-   также необходимы опции <code>-m</code> или <code>-o</code>(или обе сразу). Первая выводит
-   матрицу преобразования, переводящую <code>source</code> в <code>reference</code>, а вторая —
-   трансформированное изображение <code>source</code> таким образом, чтобы его элементы
-   максимально совпадали с <code>reference</code>. Тип элемента (<code>dtype</code> в numpy)
-   входных массивов должен быть <code>uint8</code>. Опция <code>-w</code> позволяет вырезать
-   область из центра входных массивов и искать ключевые точки в ней, применяя
-   потом найденное преобразование на весь исходный массив, таким образом экономя
-   время и память. Параметры <code>-s</code> и <code>-r</code> управляют тем, какая модель будет
-   использована для поиска преобразования. Флаг <code>-s</code> включает поиск
-   коэффициента масштабирования, а <code>-r</code> позволяет ограничить вращение одной из
-   осей. Остальные опции относятся к настройкам алгоритмов 3D SIFT и
-   RANSAC. Рекомендуется обратиться к литературе для понимания их значения.</p><p>   Для работы с raw форматом (не рекомендуется!) нужно создать файл метаданных с
-   расширением <code>s-exp</code> на каждый входной raw файл, имеющий вид:
-   </p><pre><code class=NIL>(имя-файла-в-кавычках размерность-0 размерность-1 размерность-2)
+   </code></pre><p>   Two mandatory arguments <code>reference</code> and <code>source</code> are two input
+   images. Soil-align will try to bring a source image into a reference'
+   coordinate system and write a result image (if <code>-o</code> option is specified)
+   and/or write a transform matrix (if <code>-O</code> option is specified). The
+   transform matrix is 4×4 matrix in Numpy format which when left-multiplied by
+   an augmented coordinate vector \((x, y, z, 1)^T\) in the reference'
+   coordinate system produces a coordinate vector \((x', y', z', 1)^T\) in the
+   source' coordinate system.</p><p>   Here we discuss not-so-important options:
+   </p><ul><li><code>-v</code> — Be more verbose</li><li><code>-t</code> — Number of threads. Used when computing image feature points
+   and matching descriptors. On FreeBSD platform the default is a half of
+   available cores, but no more than 10. On other platforms the default is 1.</li><li><code>-w</code> — Used to crop a big input image. When not specified the whole
+   image is used to compute feature points. When specified, a window of this
+   side is cut from the center of an image. Feature points are only found in
+   this window</li><li><code>--rotation-constraint</code> — When finding a transform between the
+   reference' and source' coordinate systems constrain possible rotations, so
+   only a rotation around this axis (0, 1 or 2) is allowed. When not specified,
+   all rotations are allowed. Numeration of axes is in row-major order (i.e. if
+   an array <code>a[i, j ,k]</code> is a pixel in your image, then <code>i</code> is the 0th
+   index, <code>j</code> is the 1st index and <code>k</code> is the 3rd index)</li><li><code>-s</code> — Allow scaling (assume the images are of different
+   resolution) when finding a transform between the reference' and source'
+   coordinate systems. This feature is experimental and is turned off by
+   default.</li><li><code>-b</code> — What color to use for out-of-bounds array access. Used to
+   produce the resulting image. Can range from 0 to 255.</li><li><code>--dist-ratio</code> — Feature points are matched using 2-nearest
+   neighbors according to Euclidean distance between corresponding
+   descriptors. Two points \(p_{ref}\) and \(p_{src}\) match if \(d
+   \rho(p_{ref}, p_{src}) &lt; \rho(p_{ref}, p'_{src})\). Here \(p'_{src}\) is the
+   second-nearest feature point and \(d\) is the distance ratio. The default
+   value is 1.2</li><li><code>--fit-error</code> — A parameter used in the RANSAC algorithm to
+   determine if a model fits a point. The default value is 100.0</li><li><code>--ransac-iterations</code> — A number of RANSAC iterations to find a
+   model which fits the feature points. The default value is 5000.</li></ul><p>   Soil-align utilises LMDB to store image descriptors. The DB is written at
+   <code>~/.local/share/soil-align/</code> by default, but the path can be overwritten
+   with <code>SOIL_ALIGN_DB</code> environment variable. The DB accelerates registration
+   within the same dataset. After working with the dataset it's recommended to
+   manually remove the database. No DB pruning or what else to reduce the DB
+   size is implemented at the moment.
+   </p><p>   </p><h1 id="output-explained">Output explained</h1><p>
+   A typical output of soil-align when being run with <code>-v</code> option is the
+   following:
+   </p><pre><code class=NIL> &lt;INFO&gt; [15:01:00] soil-align/cli cli.lisp (top level form %main) - Starting
+ &lt;INFO&gt; [15:01:00] soil-align/cli cli.lisp (top level form %main) -
+  Will use 6 threads
+ &lt;INFO&gt; [15:17:13] soil-align/cli cli.lisp (top level form %main log-eval) -
+  SOIL-ALIGN/CLI::MESSAGE: &quot;Got descriptors of the source image&quot;
+ &lt;INFO&gt; [15:34:03] soil-align/cli cli.lisp (top level form %main log-eval) -
+  SOIL-ALIGN/CLI::MESSAGE: &quot;Got descriptors of the reference image&quot;
+ &lt;INFO&gt; [15:36:00] soil-align/cli cli.lisp (top level form %main) -
+  Found matches between images
+ &lt;INFO&gt; [15:36:00] soil-align/cli cli.lisp (top level form %main) -
+  Found a transform matrix
+ &lt;INFO&gt; [15:36:12] soil-align/cli cli.lisp (top level form %main log-eval) -
+  SOIL-ALIGN/CLI::MESSAGE: &quot;Computed a transformed image&quot;
+ &lt;INFO&gt; [15:36:12] soil-align/cli cli.lisp (top level form %main) -
+  Summary: 281390/300000 descriptors, 379 independent parameters, 996 matches, 842 inliers, 805.0559 fit error
+   </code></pre><p>   As you can see it took 35 minutes to process a pair of images. In this
+   example a workspace size of 800 were used. Each image contains about 300000
+   feature points but there are only 996 matches between images. This is because
+   there was a process of drying between the images which changed the structure
+   of the porous medium. Nevertheless soil-align was able to register the
+   images. It constructed a transform which fitted 842 descriptors with total
+   error of 805 (the error is computed as \(\sqrt{\sum_i |T(x_i) - y_i|^2}\))
+   where \(x_i\) is a coordinate of a feature point on the source image, \(y_i\)
+   is a coordinate of a feature point on the reference image and \(T\) is a
+   transform between source and reference coordinate systems.</p><p>   If you run soil-align again with the same reference image, the execution time
+   is reduced to 17 minutes due to use of LMDB.
+   </p><pre><code class=NIL> &lt;INFO&gt; [15:59:34] soil-align/cli cli.lisp (top level form %main) - Starting
+ &lt;INFO&gt; [15:59:34] soil-align/cli cli.lisp (top level form %main) -
+  Will use 6 threads
+ &lt;INFO&gt; [16:15:09] soil-align/cli cli.lisp (top level form %main log-eval) -
+  SOIL-ALIGN/CLI::MESSAGE: &quot;Got descriptors of the source image&quot;
+ &lt;INFO&gt; [16:15:16] soil-align/cli cli.lisp (top level form %main log-eval) -
+  SOIL-ALIGN/CLI::MESSAGE: &quot;Got descriptors of the reference image&quot;
+ &lt;INFO&gt; [16:17:00] soil-align/cli cli.lisp (top level form %main) -
+  Found matches between images
+ &lt;INFO&gt; [16:17:02] soil-align/cli cli.lisp (top level form %main) -
+  Found a transform matrix
+ &lt;INFO&gt; [16:17:13] soil-align/cli cli.lisp (top level form %main log-eval) -
+  SOIL-ALIGN/CLI::MESSAGE: &quot;Computed a transformed image&quot;
+ &lt;INFO&gt; [16:17:14] soil-align/cli cli.lisp (top level form %main) -
+  Summary: 251890/300000 descriptors, 379 independent parameters, 2025 matches,
+ 1868 inliers, 1068.2292 fit error
    </code></pre><p>
-   например
+   </p><p>   </p><h1 id="supported-formats">Supported formats</h1><p>
+   </p><ul><li>Numpy arrays (.npy files). These arrays must have rank 3 and dtype
+   'uint8'. Elements of an array encode pixel intensity at the point.</li><li>Raw files (not recommended!)</li></ul><p>   To use raw files (once again: not recommended!) you need to create a metadata
+   file with extension <code>s-exp</code> for each input file. It contents should be:
+   </p><pre><code class=NIL>(quoted-name-of-raw-file dim-x dim-y dim-z)
+   </code></pre><p>
+   for example
    </p><pre><code class=NIL>(&quot;foo.raw&quot; 1000 1000 600)
    </code></pre><p>
-   Ожидается, что raw файл будет хранить данные в row-major порядке, один
-   беззнаковый октет на воксель. Для записи преобразованного изображения в raw
-   формат нужно указать выходной файл с расширением <code>raw</code>. Размерность
-   выходного массива соответствует размерности <code>source</code>, поэтому для него файл
-   метаданных не нужен.</p><p>   Soil-align использует базу данных для сохранения дескрипторов. По умолнчанию
-   база сохраняется в директории <code>~/.local/share/soil-align/</code>, но путь до базы
-   может быть переназначен переменной окружения <code>SOIL_ALIGN_DB</code>. В данный
-   момент база занимает довольно значительный объём, и рекомендуется вручную
-   удалять её после окончания работы с датасетом.
+   It is expected that raw file has its content in row-major order with one
+   unsigned octet per voxel.
+   For output files you don't need metadata (dimensions of the output =
+   dimensions of the source).
+   </p><p>
 </p>
       </div>
     </main>
