@@ -55,3 +55,6 @@ jobs:
           export LD_LIBRARY_PATH=/usr/local/lib
           qlot install
           qlot exec ros -l tests/ci.lisp
+      - name: Make a Release
+        uses: softprops/action-gh-release@v3
+        if: github.ref_type == 'tag'
