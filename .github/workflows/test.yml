@@ -50,11 +50,8 @@ jobs:
         run: |
           echo "${HOME}/.roswell/bin" >> $GITHUB_PATH
       - name: Run tests
-        # I need to skip SSL certificate checks because of an expired
-        # certificate at gitlab.common-lisp.net
         run: |
           cd $GITHUB_WORKSPACE
-          export GIT_SSL_NO_VERIFY=1
           export LD_LIBRARY_PATH=/usr/local/lib
           qlot install
           qlot exec ros -l tests/ci.lisp
