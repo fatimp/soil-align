@@ -14,6 +14,18 @@
    @image[src=example.png]()
 
    @begin(section)
+   @title(Source code)
+     There is two options for obtaining the source code:
+     @begin(list)
+       @item(Download a release from
+     @link[uri="https://github.com/fatimp/soil-align/releases"](GitHub).)
+       @item(Clone git repository: @c(git clone https://github.com/fatimp/soil-align).)
+     @end(list)
+     Changelog is
+     @link[uri="https://github.com/fatimp/soil-align/blob/master/CHANGELOG.md"](here).
+   @end(section)
+
+   @begin(section)
    @title(Dependencies)
      @begin(list)
        @item(@link[uri="https://github.com/fatimp/SIFT3D"](SIFT3D) version 2.0+)
