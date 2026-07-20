@@ -65,7 +65,7 @@
 ("lmdb" .
  (:class qlot/source/github:source-github
   :initargs (:repos "shamazmazum/lmdb" :ref nil :branch nil :tag nil)
-  :version "github-cf3afbc25621c59436048496383180a3970d3367"))
+  :version "github-4f92a105ffceed61116bcbdb3085d12c6fd1a6a0"))
 ("entzauberte-matrices" .
  (:class qlot/source/github:source-github
   :initargs (:repos "shamazmazum/entzauberte-matrices" :ref nil :branch nil :tag "v0.3")

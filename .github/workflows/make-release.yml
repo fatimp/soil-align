@@ -1,9 +1,11 @@
-name: CI tests
+name: Release
 
-on: [push, pull_request]
+on:
+  push:
+    tags: [v*]
 
 jobs:
-  tests:
+  release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -49,9 +51,39 @@ jobs:
       - name: Set Path
         run: |
           echo "${HOME}/.roswell/bin" >> $GITHUB_PATH
-      - name: Run tests
+      - name: Build soil-align
         run: |
           cd $GITHUB_WORKSPACE
           export LD_LIBRARY_PATH=/usr/local/lib
           qlot install
-          qlot exec ros -l tests/ci.lisp
+          qlot exec ros -e '(asdf:make :soil-align)'
+      - name: Get version
+        uses: nowsprinting/check-version-format-action@v5
+        id: version
+        with:
+          prefix: 'v'
+      - name: Prepare release
+        run: |
+          cd $GITHUB_WORKSPACE
+          mkdir -p soil-align-amd64/usr/bin \
+          soil-align-amd64/usr/lib/x86_64-linux-gnu \
+          soil-align-amd64/DEBIAN
+          cp src/soil-align soil-align-amd64/usr/bin
+          cp /usr/local/lib/libfaiss*  soil-align-amd64/usr/lib/x86_64-linux-gnu
+          cp /usr/local/lib/libsift3D* soil-align-amd64/usr/lib/x86_64-linux-gnu
+          cat > soil-align-amd64/DEBIAN/control << EOF
+          Package: soil-align
+          Version: ${{ steps.version.outputs.full_without_prefix }}
+          Architecture: amd64
+          Maintainer: Vasily Postnicov <postnicov.vv@mipt.ru>
+          Depends: libblas3, liblapack3, libopenblas0, libopenblas0-openmp, liblapacke, libtiff6
+          Conflicts: libfaiss, libfaiss-dev
+          Description: A tool for 3D image registration
+          EOF
+          cat soil-align-amd64/DEBIAN/control
+          dpkg-deb --build soil-align-amd64 \
+          soil-align-amd64-${{ steps.version.outputs.full_without_prefix }}.deb
+      - name: Make a Release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: soil-align-amd64-${{ steps.version.outputs.full_without_prefix }}.deb
