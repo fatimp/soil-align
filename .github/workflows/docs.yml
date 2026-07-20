@@ -25,7 +25,7 @@ jobs:
           sudo apt update
           sudo apt install build-essential cmake libblas-dev \
           liblapack-dev libopenblas-dev liblmdb-dev libopenblas-openmp-dev \
-          liblapacke-dev
+          liblapacke-dev libtiff-dev
       - name: Build SIFT3D
         run: |
           cd $GITHUB_WORKSPACE/sift3d
