@@ -42,7 +42,7 @@
   <h1 class="doc-title">soil-align</h1>
   <article id="article" data-section="cli">
     <aside>
-      <ol class="toc"><li><a href="index.html" data-node="index">Introduction</a><ol><li><a href="index.html#source-code" data-node="source-code">Source code</a></li><li><a href="index.html#dependencies" data-node="dependencies">Dependencies</a></li><li><a href="index.html#installation" data-node="installation">Installation</a></li><li><a href="index.html#literature" data-node="literature">Literature</a></li></ol></li><li><a href="cli.html" data-node="cli">Command line tool</a><ol><li><a href="cli.html#how-to-use" data-node="how-to-use">How to use</a></li><li><a href="cli.html#output-explained" data-node="output-explained">Output explained</a></li><li><a href="cli.html#supported-formats" data-node="supported-formats">Supported formats</a></li></ol></li><li><a href="api.html" data-node="api">API</a></li></ol>
+      <ol class="toc"><li><a href="index.html" data-node="index">Introduction</a><ol><li><a href="index.html#source-code-and-binary-packages" data-node="source-code-and-binary-packages">Source code and binary packages</a></li><li><a href="index.html#dependencies" data-node="dependencies">Dependencies</a></li><li><a href="index.html#installation" data-node="installation">Installation</a></li><li><a href="index.html#literature" data-node="literature">Literature</a></li></ol></li><li><a href="cli.html" data-node="cli">Command line tool</a><ol><li><a href="cli.html#how-to-use" data-node="how-to-use">How to use</a></li><li><a href="cli.html#output-explained" data-node="output-explained">Output explained</a></li><li><a href="cli.html#supported-formats" data-node="supported-formats">Supported formats</a></li></ol></li><li><a href="api.html" data-node="api">API</a></li></ol>
     </aside>
     <main class="codex-section">
       <header>
@@ -53,7 +53,7 @@
    </p><h1 id="how-to-use">How to use</h1><p>
    Soil-align application has a command line interface. If you launch it without
    arguments the following short help appears:
-   </p><pre><code class=NIL>% soil-align
+</p><pre><code class=NIL>% soil-align
 Abrupt ending of the input: argument #&lt;ARGUMENT {11004A6423}&gt; missing
 Usage: soil-align [-v|--verbose] [-t|--threads N] [-w|--workspace-side S]
                   [-O|--transform-output m.npy] [-o|--output out.npy]
@@ -74,7 +74,7 @@ Description of flags and options
 -w|--workspace-side S           Side of a workspace which is cut from center of the input images
 -t|--threads N                  Number of threads to use
 -v|--verbose                    Be verbose
-   </code></pre><p>   Two mandatory arguments <code>reference</code> and <code>source</code> are two input
+</code></pre><p>   Two mandatory arguments <code>reference</code> and <code>source</code> are two input
    images. Soil-align will try to bring a source image into a reference'
    coordinate system and write a result image (if <code>-o</code> option is specified)
    and/or write a transform matrix (if <code>-O</code> option is specified). The
@@ -112,7 +112,7 @@ Description of flags and options
    </p><p>   </p><h1 id="output-explained">Output explained</h1><p>
    A typical output of soil-align when being run with <code>-v</code> option is the
    following:
-   </p><pre><code class=NIL> &lt;INFO&gt; [15:01:00] soil-align/cli cli.lisp (top level form %main) - Starting
+</p><pre><code class=NIL> &lt;INFO&gt; [15:01:00] soil-align/cli cli.lisp (top level form %main) - Starting
  &lt;INFO&gt; [15:01:00] soil-align/cli cli.lisp (top level form %main) -
   Will use 6 threads
  &lt;INFO&gt; [15:17:13] soil-align/cli cli.lisp (top level form %main log-eval) -
@@ -127,7 +127,7 @@ Description of flags and options
   SOIL-ALIGN/CLI::MESSAGE: &quot;Computed a transformed image&quot;
  &lt;INFO&gt; [15:36:12] soil-align/cli cli.lisp (top level form %main) -
   Summary: 281390/300000 descriptors, 379 independent parameters, 996 matches, 842 inliers, 805.0559 fit error
-   </code></pre><p>   As you can see it took 35 minutes to process a pair of images. In this
+</code></pre><p>   As you can see it took 35 minutes to process a pair of images. In this
    example a workspace size of 800 were used. Each image contains about 300000
    feature points but there are only 996 matches between images. This is because
    there was a process of drying between the images which changed the structure
@@ -138,7 +138,7 @@ Description of flags and options
    is a coordinate of a feature point on the reference image and \(T\) is a
    transform between source and reference coordinate systems.</p><p>   If you run soil-align again with the same reference image, the execution time
    is reduced to 17 minutes due to use of LMDB.
-   </p><pre><code class=NIL> &lt;INFO&gt; [15:59:34] soil-align/cli cli.lisp (top level form %main) - Starting
+</p><pre><code class=NIL> &lt;INFO&gt; [15:59:34] soil-align/cli cli.lisp (top level form %main) - Starting
  &lt;INFO&gt; [15:59:34] soil-align/cli cli.lisp (top level form %main) -
   Will use 6 threads
  &lt;INFO&gt; [16:15:09] soil-align/cli cli.lisp (top level form %main log-eval) -
@@ -154,16 +154,19 @@ Description of flags and options
  &lt;INFO&gt; [16:17:14] soil-align/cli cli.lisp (top level form %main) -
   Summary: 251890/300000 descriptors, 379 independent parameters, 2025 matches,
  1868 inliers, 1068.2292 fit error
-   </code></pre><p>
+</code></pre><p>
    </p><p>   </p><h1 id="supported-formats">Supported formats</h1><p>
    </p><ul><li>Numpy arrays (.npy files). These arrays must have rank 3 and dtype
-   'uint8'. Elements of an array encode pixel intensity at the point.</li><li>Raw files (not recommended!)</li></ul><p>   To use raw files (once again: not recommended!) you need to create a metadata
+     'uint8'. Elements of an array encode pixel intensity at the point.</li><li>Multipage TIFF images. Each image in a multipage file must have the
+     same dimensions. Multipage images can be easily created and split into
+     multiple one-page tiff images with <code>tiffcp</code> and <code>tiffsplit</code> command
+     line tools shipped with libtiff.</li><li>Raw files (not recommended!)</li></ul><p>   To use raw files (once again: not recommended!) you need to create a metadata
    file with extension <code>s-exp</code> for each input file. It contents should be:
-   </p><pre><code class=NIL>(quoted-name-of-raw-file dim-x dim-y dim-z)
-   </code></pre><p>
+</p><pre><code class=NIL>(quoted-name-of-raw-file dim-x dim-y dim-z)
+</code></pre><p>
    for example
-   </p><pre><code class=NIL>(&quot;foo.raw&quot; 1000 1000 600)
-   </code></pre><p>
+</p><pre><code class=NIL>(&quot;foo.raw&quot; 1000 1000 600)
+</code></pre><p>
    It is expected that raw file has its content in row-major order with one
    unsigned octet per voxel.
    For output files you don't need metadata (dimensions of the output =
