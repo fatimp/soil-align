@@ -19,3 +19,4 @@ github conspack/cl-conspack
 github shamazmazum/command-line-parse
 github shamazmazum/numpy-npy
 github shamazmazum/vector-sum
+github shamazmazum/cl-libtiff :tag v0.1

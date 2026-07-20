@@ -228,7 +228,7 @@
                            #'atrans:apply-transform
                            (if workspace-side
                                ;; Load a bigger image once more
-                               (numpy-npy:load-array (%assoc :source args))
+                               (io:read-image (%assoc :source args))
                                source)
                            (trans:ransac-result-transform fit) ref-shape
                            :background background)

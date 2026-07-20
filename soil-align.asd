@@ -21,6 +21,7 @@
                :vector-sum
                :lparallel
                :cl-conspack
+               :cl-libtiff
                (:feature :freebsd :freebsd-sysctl)
                :soil-align/util
                :soil-align/preprocessing
