@@ -16,6 +16,7 @@ TODO: Add an image
 * faiss[^1]
 * OpenBLAS
 * LMDB
+* libtiff
 * SBCL (Any other implementation of Common Lisp will no work)
 * Qlot
 

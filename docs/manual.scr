@@ -32,7 +32,9 @@
        @item(faiss (принадлежит компании Meta, признанной в РФ экстремистской организацией))
        @item(SBCL (Another implementation of Common Lisp will not do))
        @item(OpenBLAS)
+       @item(libtiff)
        @item(LMDB)
+       @item(@link[uri="https://github.com/fukamachi/qlot"](Qlot) and SBCL for building)
      @end(list)
    @end(section)
 
@@ -68,7 +70,7 @@
    @title(How to use)
    Soil-align application has a command line interface. If you launch it without
    arguments the following short help appears:
-   @begin(code)
+@begin(code)
 % soil-align
 Abrupt ending of the input: argument #<ARGUMENT {11004A6423}> missing
 Usage: soil-align [-v|--verbose] [-t|--threads N] [-w|--workspace-side S]
@@ -90,7 +92,7 @@ Description of flags and options
 -w|--workspace-side S           Side of a workspace which is cut from center of the input images
 -t|--threads N                  Number of threads to use
 -v|--verbose                    Be verbose
-   @end(code)
+@end(code)
 
    Two mandatory arguments @c(reference) and @c(source) are two input
    images. Soil-align will try to bring a source image into a reference'
@@ -147,7 +149,7 @@ Description of flags and options
    @title(Output explained)
    A typical output of soil-align when being run with @c(-v) option is the
    following:
-   @begin(code)
+@begin(code)
  <INFO> [15:01:00] soil-align/cli cli.lisp (top level form %main) - Starting
  <INFO> [15:01:00] soil-align/cli cli.lisp (top level form %main) -
   Will use 6 threads
@@ -163,7 +165,7 @@ Description of flags and options
   SOIL-ALIGN/CLI::MESSAGE: "Computed a transformed image"
  <INFO> [15:36:12] soil-align/cli cli.lisp (top level form %main) -
   Summary: 281390/300000 descriptors, 379 independent parameters, 996 matches, 842 inliers, 805.0559 fit error
-   @end(code)
+@end(code)
 
    As you can see it took 35 minutes to process a pair of images. In this
    example a workspace size of 800 were used. Each image contains about 300000
@@ -178,7 +180,7 @@ Description of flags and options
 
    If you run soil-align again with the same reference image, the execution time
    is reduced to 17 minutes due to use of LMDB.
-   @begin(code)
+@begin(code)
  <INFO> [15:59:34] soil-align/cli cli.lisp (top level form %main) - Starting
  <INFO> [15:59:34] soil-align/cli cli.lisp (top level form %main) -
   Will use 6 threads
@@ -195,26 +197,30 @@ Description of flags and options
  <INFO> [16:17:14] soil-align/cli cli.lisp (top level form %main) -
   Summary: 251890/300000 descriptors, 379 independent parameters, 2025 matches,
  1868 inliers, 1068.2292 fit error
-   @end(code)
+@end(code)
    @end(section)
 
    @begin(section)
    @title(Supported formats)
    @begin(list)
      @item(Numpy arrays (.npy files). These arrays must have rank 3 and dtype
-   'uint8'. Elements of an array encode pixel intensity at the point.)
+     'uint8'. Elements of an array encode pixel intensity at the point.)
+     @item(Multipage TIFF images. Each image in a multipage file must have the
+     same dimensions. Multipage images can be easily created and split into
+     multiple one-page tiff images with @c(tiffcp) and @c(tiffsplit) command
+     line tools shipped with libtiff.)
      @item(Raw files (not recommended!))
    @end(list)
 
    To use raw files (once again: not recommended!) you need to create a metadata
    file with extension @c(s-exp) for each input file. It contents should be:
-   @begin(code)
+@begin(code)
 (quoted-name-of-raw-file dim-x dim-y dim-z)
-   @end(code)
+@end(code)
    for example
-   @begin(code)
+@begin(code)
 ("foo.raw" 1000 1000 600)
-   @end(code)
+@end(code)
    It is expected that raw file has its content in row-major order with one
    unsigned octet per voxel.
    For output files you don't need metadata (dimensions of the output =
