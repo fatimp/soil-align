@@ -42,7 +42,7 @@
   <h1 class="doc-title">soil-align</h1>
   <article id="article" data-section="index">
     <aside>
-      <ol class="toc"><li><a href="index.html" data-node="index">Introduction</a><ol><li><a href="index.html#dependencies" data-node="dependencies">Dependencies</a></li><li><a href="index.html#installation" data-node="installation">Installation</a></li><li><a href="index.html#literature" data-node="literature">Literature</a></li></ol></li><li><a href="cli.html" data-node="cli">Command line tool</a><ol><li><a href="how-to-use.html" data-node="how-to-use">How to use</a></li><li><a href="output-explained.html" data-node="output-explained">Output explained</a></li><li><a href="supported-formats.html" data-node="supported-formats">Supported formats</a></li></ol></li><li><a href="api.html" data-node="api">API</a></li></ol>
+      <ol class="toc"><li><a href="index.html" data-node="index">Introduction</a><ol><li><a href="index.html#source-code" data-node="source-code">Source code</a></li><li><a href="index.html#dependencies" data-node="dependencies">Dependencies</a></li><li><a href="index.html#installation" data-node="installation">Installation</a></li><li><a href="index.html#literature" data-node="literature">Literature</a></li></ol></li><li><a href="cli.html" data-node="cli">Command line tool</a><ol><li><a href="how-to-use.html" data-node="how-to-use">How to use</a></li><li><a href="output-explained.html" data-node="output-explained">Output explained</a></li><li><a href="supported-formats.html" data-node="supported-formats">Supported formats</a></li></ol></li><li><a href="api.html" data-node="api">API</a></li></ol>
     </aside>
     <main class="codex-section">
       <header>
@@ -59,7 +59,13 @@
    reference and the source images (both having dimensions \(1000 \times 1000
    \times 1000\)) are shown, as well as the resulting image (standalone and
    overlayed with the reference).
-   <img src="example.png"/></p><p>   </p><h1 id="dependencies">Dependencies</h1>
+   <img src="example.png"/></p><p>   </p><h1 id="source-code">Source code</h1>
+     There is two options for obtaining the source code:
+     <ul><li>Download a release from
+     <a href="https://github.com/fatimp/soil-align/releases">GitHub</a>.</li><li>Clone git repository: <code>git clone https://github.com/fatimp/soil-align</code>.</li></ul>
+     Changelog is
+     <a href="https://github.com/fatimp/soil-align/blob/master/CHANGELOG.md">here</a>.
+   <p>   </p><h1 id="dependencies">Dependencies</h1>
      <ul><li><a href="https://github.com/fatimp/SIFT3D">SIFT3D</a> version 2.0+</li><li>faiss (принадлежит компании Meta, признанной в РФ экстремистской организацией)</li><li>SBCL (Another implementation of Common Lisp will not do)</li><li>OpenBLAS</li><li>LMDB</li></ul>
    <p>   </p><h1 id="installation">Installation</h1>
      <ol><li>Launch a shell and <code>cd</code> to the root directory of this project.</li><li>Execute <code>qlot install &amp;&amp; qlot exec sbcl --dynamic-space-size 100gb</code></li><li>In the opened shell execute <code>(asdf:make :soil-align)</code>.</li><li>Your executable file is <code>src/soil-align</code>.</li></ol>
