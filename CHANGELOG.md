@@ -1,5 +1,13 @@
 # Changelog
 
+## Version 0.11.0
+
+* Improvement: Add support for multipage TIFF images (can be used for input and
+  output).
+* Improvement: Build a package for the latest Ubuntu LTS. This is experimental
+  and completely untested (I only verified that `soil-aligns` correctly prints
+  help when invoked without arguments). You better build from sources.
+
 ## Version 0.10
 
 * Improvement: Update documentation

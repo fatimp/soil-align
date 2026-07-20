@@ -56,7 +56,7 @@ jobs:
           cd $GITHUB_WORKSPACE
           export LD_LIBRARY_PATH=/usr/local/lib
           qlot install
-          qlot exec ros -e '(asdf:make :soil-align)'
+          qlot exec ros dynamic-space-size=100gb -e '(asdf:make :soil-align)'
       - name: Get version
         uses: nowsprinting/check-version-format-action@v5
         id: version

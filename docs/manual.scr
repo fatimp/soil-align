@@ -14,11 +14,12 @@
    @image[src=example.png]()
 
    @begin(section)
-   @title(Source code)
+   @title(Source code and binary packages)
      There is two options for obtaining the source code:
      @begin(list)
        @item(Download a release from
-     @link[uri="https://github.com/fatimp/soil-align/releases"](GitHub).)
+     @link[uri="https://github.com/fatimp/soil-align/releases"](GitHub). There
+     is also an experimental binary package for Ubuntu LTS.)
        @item(Clone git repository: @c(git clone https://github.com/fatimp/soil-align).)
      @end(list)
      Changelog is
