@@ -65,7 +65,21 @@
             :short       #\t
             :fn          #'parse-integer
             :description "Number of threads to use")
-    (option :workspace-side "S"
+    (option :src-workspace "SIDE"
+            :long        "src-workspace-side"
+            :fn          #'parse-integer
+            :description #.(concatenate
+                            'string
+                            "Side of a workspace which is cut from center of the "
+                            "source image. Has a precedence over -w option."))
+    (option :ref-workspace "SIDE"
+            :long        "ref-workspace-side"
+            :fn          #'parse-integer
+            :description #.(concatenate
+                            'string
+                            "Side of a workspace which is cut from center of the "
+                            "reference image. Has a precedence over -w option."))
+    (option :workspace "SIDE"
             :long        "workspace-side"
             :short       #\w
             :fn          #'parse-integer
@@ -155,18 +169,21 @@
 
 (defun %main ()
   (let* ((args (parse-argv *parser*))
-         (dist-ratio     (%assoc :dist-ratio       args 1.2))
-         (fit-error      (%assoc :fit-error        args 100.0))
-         (trans-image    (%assoc :output           args))
-         (trans-matrix   (%assoc :transform-output args))
-         (scalingp       (%assoc :scaling          args))
-         (rot-constraint (%assoc :constraint       args))
-         (reference      (%assoc :reference        args))
-         (source         (%assoc :source           args))
-         (workspace-side (%assoc :workspace-side   args))
-         (ransac-iter    (%assoc :ransac-iter      args 5000))
-         (background     (%assoc :background       args 0))
-         (nthreads       (%assoc :nthreads         args))
+         (dist-ratio        (%assoc :dist-ratio       args 1.2))
+         (fit-error         (%assoc :fit-error        args 100.0))
+         (trans-image       (%assoc :output           args))
+         (trans-matrix      (%assoc :transform-output args))
+         (scalingp          (%assoc :scaling          args))
+         (rot-constraint    (%assoc :constraint       args))
+         (reference         (%assoc :reference        args))
+         (source            (%assoc :source           args))
+         (src-workspace (or (%assoc :src-workspace    args)
+                            (%assoc :workspace        args)))
+         (ref-workspace (or (%assoc :ref-workspace    args)
+                            (%assoc :workspace        args)))
+         (ransac-iter       (%assoc :ransac-iter      args 5000))
+         (background        (%assoc :background       args 0))
+         (nthreads          (%assoc :nthreads         args))
          (nthreads (number-of-threads nthreads))
          (db-pathname (get-db-pathname)))
     (unless (or trans-image trans-matrix)
@@ -176,8 +193,8 @@
     (let* ((source    (io:read-image source))
            (reference (io:read-image reference))
            (ref-shape (array-dimensions reference)))
-      (serapeum:mvlet ((source    sx sy sz (maybe-cut source    workspace-side))
-                       (reference rx ry rz (maybe-cut reference workspace-side)))
+      (serapeum:mvlet ((source    sx sy sz (maybe-cut source    src-workspace))
+                       (reference rx ry rz (maybe-cut reference ref-workspace)))
         ;; Run a full GC because uncut arrays may be really big, we need
         ;; to collect them now because later we will run foreign code
         ;; which allocates a lot.
@@ -226,7 +243,7 @@
                 (io:write-image
                  (log-eval "Computed a transformed image"
                            #'atrans:apply-transform
-                           (if workspace-side
+                           (if src-workspace
                                ;; Load a bigger image once more
                                (io:read-image (%assoc :source args))
                                source)
